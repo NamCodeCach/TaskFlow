@@ -8,7 +8,7 @@ export default function Page() {
     <>
       <div className="m-[100px] ">
         <div className="contain">
-          <div className="flex flex-col mx-auto p-[40px] max-w-[480px] bg-[#F5F6FA] border border-[#E2E8F0] rounded-[24px] shadow-[0px_20px_60px_0px_#10182826]">
+          <div className="flex flex-col mx-auto p-[40px] max-w-[480px] bg-white border border-[#E2E8F0] rounded-[24px] shadow-[0px_20px_60px_0px_#10182826]">
             {/* logo */}
             <div className="flex items-center justify-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-main text-lg text-white">

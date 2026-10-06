@@ -18,6 +18,11 @@
   font-family: "Inter", sans-serif;
 }
 
+html {
+  background: #F5F6FA;
+
+}
+
 /* Contain */
 .contain {
   width: 1200px;
