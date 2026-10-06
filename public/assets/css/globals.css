@@ -1,1 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 @import "tailwindcss";
+
+@theme {
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+
+  --color-text: #182230;
+  --color-main: #4F46E5;
+
+}
+
+* {
+  outline: none;
+  font-family: "Inter", sans-serif;
+}
+
+/* Contain */
+.contain {
+  width: 1200px;
+  margin: 0 auto;
+  padding: 0 5px;
+}
+
+
+@media (max-width: 1199.98px) {
+
+  /* Máy tính cỡ nhỏ */
+  .contain {
+    width: 960px;
+  }
+}
+
+@media (max-width: 991.98px) {
+
+  /* Màn hình máy tính bảng cỡ lớn */
+  .contain {
+    width: 720px;
+  }
+}
+
+@media (max-width: 767.98px) {
+
+  /* Màn hình máy tính bảng cỡ nhỏ */
+  .contain {
+    width: 540px;
+  }
+}
+
+@media (max-width: 575.98px) {
+
+  /* Màn hình điện thoại */
+  .contain {
+    width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* End contain */
