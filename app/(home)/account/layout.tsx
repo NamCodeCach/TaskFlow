@@ -1,4 +1,4 @@
-export default function AdminAccountLayout({
+export default function AccountLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
