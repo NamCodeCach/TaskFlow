@@ -26,17 +26,18 @@ html {
 
 .main {
   position: absolute;
-  width: calc(100% - 80px);
   top: 87px;
   left: 254px;
+  right: 0;
+  box-sizing: border-box;
   padding: 24px;
 }
 
 @media (max-width: 991.98px) {
   .main {
-    width: 100%;
-    top: 87px;
     left: 0;
+    right: 0;
+    top: 87px;
     padding: 24px;
   }
 }
