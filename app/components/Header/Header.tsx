@@ -4,7 +4,7 @@ export const Header = () => {
   return (
     <>
       {/* Header */}
-      <header className="fixed right-[0px] top-[0px] z-[30] flex h-[72px] w-full items-center justify-between border-b-[1px] border-[#E2E8F0] bg-[#FFFFFF] px-[16px] md:px-[24px] lg:w-[calc(100%-254px)] xl:px-[32px]">
+      <header className="fixed right-[0px] top-[0px] z-[30] flex h-[80px] w-full items-center justify-between border-b-[1px] border-[#E2E8F0] bg-[#FFFFFF] px-[16px] md:px-[24px] lg:w-[calc(100%-254px)] xl:px-[32px]">
         {/* Trái: hamburger (mobile) + breadcrumb */}
         <div className="flex items-center gap-[12px]">
           <label

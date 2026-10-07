@@ -23,6 +23,26 @@ html {
 
 }
 
+
+.main {
+  position: absolute;
+  width: calc(100% - 80px);
+  top: 87px;
+  left: 254px;
+  padding: 24px;
+}
+
+@media (max-width: 991.98px) {
+  .main {
+    width: 100%;
+    top: 87px;
+    left: 0;
+    padding: 24px;
+  }
+}
+
+
+
 /* Contain */
 .contain {
   width: 1200px;

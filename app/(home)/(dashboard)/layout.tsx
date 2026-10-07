@@ -12,7 +12,7 @@ export default function AccountLayout({
       <Header />
       {/* End Header */}
 
-      <body>{children}</body>
+      <main className="main">{children}</main>
 
       {/* Sider */}
       <Sider />
