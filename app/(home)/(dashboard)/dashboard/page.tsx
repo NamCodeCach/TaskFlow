@@ -3,6 +3,7 @@ import { FaCheck } from "react-icons/fa6";
 import { LuActivity } from "react-icons/lu";
 import { MdChecklist } from "react-icons/md";
 import { LuSquarePen, LuEllipsis, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import Link from "next/link";
 
 export default function Page() {
   return (
@@ -70,6 +71,12 @@ export default function Page() {
         </div>
       </div>
       {/* End Section 2 */}
+
+      {/* Add task */}
+      <button className="flex items-center justify-center gap-[8px] rounded-[12px] px-[16px] py-[11px] text-[13px] font-[600] text-white bg-main mt-[24px] cursor-pointer">
+        + Tạo task
+      </button>
+      {/* End Add task */}
 
       {/* Danh sách task */}
       <div className="flex items-start justify-start  mt-[24px] gap-[8px]">
