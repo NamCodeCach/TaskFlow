@@ -1,6 +1,6 @@
 import { BsStack } from "react-icons/bs";
 import { FaCheck } from "react-icons/fa6";
-import { LuActivity } from "react-icons/lu";
+import { LuActivity, LuFolderCheck } from "react-icons/lu";
 import { MdChecklist } from "react-icons/md";
 import { LuSquarePen, LuEllipsis, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import Link from "next/link";
@@ -49,6 +49,23 @@ export default function Page() {
             3
             <span className="pb-[4px] text-[12px] font-normal leading-[1] text-[#64748B]">
               1 task khác đã quá hạn
+            </span>
+          </div>
+        </div>
+
+        {/* Chờ duyệt */}
+        <div className="rounded-[16px] border-[1px] border-[#E2E8F0] bg-[#FFFFFF] p-[20px] shadow-[0px_4px_16px_0px_#1018280A] w-[276.5px]">
+          <div className="flex items-center justify-between text-[14px] font-medium text-[#475569]">
+            Đã nộp
+            <div className="flex h-[36px] w-[36px] items-center justify-center rounded-[10px] bg-[#FFF5DB] text-[18px] text-[#B77914]">
+              <LuFolderCheck />
+            </div>
+          </div>
+
+          <div className="mt-[20px] flex items-end gap-[10px] text-[36px] font-bold leading-[1] text-[#182230]">
+            3
+            <span className="pb-[4px] text-[12px] font-normal leading-[1] text-[#64748B]">
+              Đang chờ bạn duyệt
             </span>
           </div>
         </div>
