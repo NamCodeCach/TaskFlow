@@ -1,4 +1,4 @@
-export default function BaiNopList() {
+export default function Page() {
   return (
     <div className="flex-1 ">
       <h1 className="text-2xl font-bold text-text">Bài nộp</h1>
