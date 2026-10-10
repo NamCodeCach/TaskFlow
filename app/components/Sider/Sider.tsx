@@ -1,5 +1,8 @@
+"use client";
 import Link from "next/link";
 import { FaListCheck } from "react-icons/fa6";
+import type { IconType } from "react-icons";
+
 import {
   LuLayoutDashboard,
   LuListChecks,
@@ -8,8 +11,37 @@ import {
   LuTable,
   LuLogOut,
 } from "react-icons/lu";
+import { usePathname } from "next/navigation";
+
+type SiderItem = {
+  Icon: IconType;
+  title: string;
+  pathname: string;
+};
+
+export const siderItemsAdmin: SiderItem[] = [
+  { Icon: LuLayoutDashboard, title: "Tổng quan", pathname: "/admin/dashboard" },
+
+  { Icon: LuListChecks, title: "Task", pathname: "/admin/tasks/list" },
+
+  { Icon: LuFolderCheck, title: "Bài nộp", pathname: "/admin/submit-task/list" },
+
+  { Icon: LuUsers, title: "Thành viên", pathname: "/admin/member/list" },
+
+  { Icon: LuTable, title: "Xuất Excel", pathname: "/admin/export/exel" },
+];
+
+export const siderItemsUser: SiderItem[] = [
+  { Icon: LuLayoutDashboard, title: "Task của tôi", pathname: "/user/task/list" },
+
+  { Icon: LuFolderCheck, title: "Đã nộp", pathname: "/user/submit-task/list" },
+];
 
 export const Sider = () => {
+  const currentPath = usePathname();
+  let role = "user";
+  const sider = role == "admin" ? siderItemsAdmin : siderItemsUser;
+
   return (
     <>
       {/* Sider bar */}
@@ -29,54 +61,25 @@ export const Sider = () => {
           </p>
 
           <ul className="space-y-[4px]">
-            <li>
-              <Link
-                href="/admin/dashboard"
-                className="flex items-center gap-[12px] rounded-[12px] bg-[#EEF2FF] px-[16px] py-[12px] text-[14px] font-semibold text-[#4F46E5]"
-              >
-                <LuLayoutDashboard className="text-[18px]" />
-                <span>Tổng quan</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/tasks"
-                className="flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#475569] transition hover:bg-[#F9FAFB] hover:text-[#4F46E5]"
-              >
-                <LuListChecks className="text-[18px]" />
-                <span>Task</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/submissions"
-                className="flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#475569] transition hover:bg-[#F9FAFB] hover:text-[#4F46E5]"
-              >
-                <LuFolderCheck className="text-[18px]" />
-                <span>Bài nộp</span>
-                <span className="rounded-[6px] bg-[#EEF2FF] px-[6px] py-[2px] text-[12px] font-semibold text-[#4F46E5]">
-                  2
-                </span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/members"
-                className="flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#475569] transition hover:bg-[#F9FAFB] hover:text-[#4F46E5]"
-              >
-                <LuUsers className="text-[18px]" />
-                <span>Thành viên</span>
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/admin/export"
-                className="flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#475569] transition hover:bg-[#F9FAFB] hover:text-[#4F46E5]"
-              >
-                <LuTable className="text-[18px]" />
-                <span>Xuất Excel</span>
-              </Link>
-            </li>
+            {sider.map(({ Icon, title, pathname }) => {
+              const isActive = currentPath.startsWith(pathname);
+
+              return (
+                <li key={pathname}>
+                  <Link
+                    href={pathname}
+                    className={`flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] ${
+                      isActive
+                        ? "bg-[#EEF2FF] font-semibold text-[#4F46E5]"
+                        : "text-[#475467] hover:bg-[#F8FAFC]"
+                    }`}
+                  >
+                    <Icon className="text-[18px]" />
+                    <span>{title}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
