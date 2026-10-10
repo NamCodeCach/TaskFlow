@@ -1,13 +1,13 @@
 import { Header } from "@/app/components/Header/Header";
 import { Sider } from "@/app/components/Sider/Sider";
 
-export default function AccountLayout({
+export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <>
       {/* Header */}
       <Header />
       {/* End Header */}
@@ -17,6 +17,6 @@ export default function AccountLayout({
       {/* Sider */}
       <Sider />
       {/* End Sider */}
-    </html>
+    </>
   );
 }

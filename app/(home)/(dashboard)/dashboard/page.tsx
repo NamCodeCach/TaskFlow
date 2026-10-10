@@ -1,11 +1,18 @@
+"use client";
+
 import { BsStack } from "react-icons/bs";
 import { FaCheck } from "react-icons/fa6";
 import { LuActivity, LuFolderCheck } from "react-icons/lu";
 import { MdChecklist } from "react-icons/md";
 import { LuSquarePen, LuEllipsis, LuChevronLeft, LuChevronRight } from "react-icons/lu";
-import Link from "next/link";
+import ReactDOM, { createPortal } from "react-dom";
+import { useState } from "react";
+import { IoIosSend } from "react-icons/io";
+import { IoClose } from "react-icons/io5";
 
 export default function Page() {
+  const [openCreate, setOpenCreate] = useState(false);
+
   return (
     <>
       {/* Section 1 */}
@@ -90,7 +97,12 @@ export default function Page() {
       {/* End Section 2 */}
 
       {/* Add task */}
-      <button className="flex items-center justify-center gap-[8px] rounded-[12px] px-[16px] py-[11px] text-[13px] font-[600] text-white bg-main mt-[24px] cursor-pointer">
+      <button
+        className="flex items-center justify-center gap-[8px] rounded-[12px] px-[16px] py-[11px] text-[13px] font-[600] text-white bg-main mt-[24px] cursor-pointer"
+        onClick={() => {
+          setOpenCreate(true);
+        }}
+      >
         + Tạo task
       </button>
       {/* End Add task */}
@@ -323,6 +335,93 @@ export default function Page() {
         </div>
       </div>
       {/* End Danh sách task */}
+
+      {/* Giao task mới */}
+      {openCreate &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-[560px] rounded-[16px] bg-white p-[24px]">
+              <div className="flex justify-between">
+                <h3 className="text-[20px] font-bold text-[#182230]">Tạo task mới</h3>
+
+                <button className="cursor-pointer" onClick={() => setOpenCreate(false)}>
+                  <IoClose className="w-[20px] h-[20px]" />
+                </button>
+              </div>
+
+              <form className="mt-[20px] flex flex-col gap-[16px] ">
+                {/* Title */}
+                <div className="flex flex-col w-full gap-[8px]">
+                  <label className="font-[600] text-text text-[14px]">Tiêu đề</label>
+                  <input
+                    type="text"
+                    placeholder="Tiêu đề"
+                    className="rounded-[10px] border border-[#E2E8F0] px-[12px] py-[10px] text-[14px] outline-none"
+                  />
+                </div>
+                {/* Mô tả */}
+                <div className="flex flex-col w-full gap-[8px]">
+                  <label className="font-[600] text-text text-[14px]">Mô tả</label>
+                  <textarea
+                    rows={4}
+                    placeholder="Mô tả"
+                    className="rounded-[10px] border border-[#E2E8F0] px-[12px] py-[10px] text-[14px] outline-none"
+                  />
+                </div>
+                {/* Giao cho */}
+                <div className="flex flex-col w-full gap-[8px]">
+                  <label className="font-[600] text-text text-[14px]">Giao cho</label>
+                  <div className="rounded-[10px] border border-[#E2E8F0] px-[12px] py-[10px] text-[14px] outline-none max-h-[100px] overflow-y-auto flex flex-col gap-[6px]">
+                    <div className="flex items-center gap-[8px] text-text text-[13px] font-[500]">
+                      <input type="checkbox" />
+                      <label htmlFor="hoangthuylinh">Hoàng Thùy Linh</label>
+                    </div>
+
+                    <div className="flex items-center gap-[8px] text-text text-[13px] font-[500]">
+                      <input type="checkbox" />
+                      <label htmlFor="nguyenvana">Nguyễn Văn A</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col w-full gap-[8px]">
+                  <label className="font-[600] text-text text-[14px]">Hạn nộp</label>
+                  <div className="flex gap-[12px]">
+                    <input
+                      type="date"
+                      className="w-[70%] border border-[#E2E8F0] rounded-[10px] px-[12px] py-[10px]"
+                    />
+                    <input
+                      type="time"
+                      className="flex-1 border border-[#E2E8F0] rounded-[10px] px-[12px] py-[10px]"
+                    />
+                  </div>
+                </div>
+
+                {/* Action */}
+                <div className="flex justify-end gap-[8px]">
+                  <button
+                    type="button"
+                    onClick={() => setOpenCreate(false)}
+                    className="rounded-[10px] border border-[#E2E8F0] px-[16px] py-[10px] text-[14px] font-semibold cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-[10px] bg-main px-[16px] py-[10px] text-[14px] font-semibold text-white flex items-center gap-[8px] cursor-pointer"
+                  >
+                    <IoIosSend />
+                    Giao task
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Hết Giao task mới */}
     </>
   );
 }
