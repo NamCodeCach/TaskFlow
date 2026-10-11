@@ -1,5 +1,5 @@
-import { Header } from "@/app/components/Header/Header";
-import { Sider } from "@/app/components/Sider/Sider";
+import { Header } from "@/src/app/components/Header/Header";
+import { Sider } from "@/src/app/components/Sider/Sider";
 
 export default function DashboardLayout({
   children,
