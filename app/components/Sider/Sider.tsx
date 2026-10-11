@@ -39,7 +39,7 @@ export const siderItemsUser: SiderItem[] = [
 
 export const Sider = () => {
   const currentPath = usePathname();
-  let role = "user";
+  let role = "admin";
   const sider = role == "admin" ? siderItemsAdmin : siderItemsUser;
 
   return (
