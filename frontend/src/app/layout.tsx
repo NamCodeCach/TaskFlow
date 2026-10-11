@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "../public/assets/css/globals.css";
+import "../../public/assets/css/globals.css";
 
 export const metadata: Metadata = {
   title: "TaskFlow",
