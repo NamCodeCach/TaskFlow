@@ -144,6 +144,21 @@ export default function RegisterPage() {
     confirmPassword?: string;
   }>({});
 
+  // Chế độ Đăng ký tài khoản phụ liên kết
+  const [isSubAccountMode, setIsSubAccountMode] = useState(false);
+  const [parentAccountEmail, setParentAccountEmail] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("subaccount") === "true") {
+        setIsSubAccountMode(true);
+        const parent = params.get("parent");
+        if (parent) setParentAccountEmail(decodeURIComponent(parent));
+      }
+    }
+  }, []);
+
   const [passwordTouched, setPasswordTouched] = useState(false);
   const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
 
@@ -366,11 +381,48 @@ export default function RegisterPage() {
       users.push(newUser);
       localStorage.setItem("taskflow_users", JSON.stringify(users));
 
-      // Hiển thị modal đăng ký thành công và tự động chuyển về login
-      setRegisterSuccess(true);
-      setTimeout(() => {
-        router.push("/account/login?registered=success");
-      }, 1800);
+      // Nếu đang trong chế độ tạo tài khoản phụ cho tài khoản cha
+      if (isSubAccountMode && parentAccountEmail) {
+        const allSubsStr = localStorage.getItem("taskflow_sub_accounts");
+        const allSubs = allSubsStr ? JSON.parse(allSubsStr) : {};
+        const pKey = parentAccountEmail.toLowerCase();
+        if (!allSubs[pKey]) allSubs[pKey] = [];
+        allSubs[pKey].push({
+          fullName: newUser.fullName,
+          email: newUser.email,
+          role: "user",
+        });
+        localStorage.setItem("taskflow_sub_accounts", JSON.stringify(allSubs));
+
+        // Tự động thêm vào taskflow_members_list
+        try {
+          const membersStr = localStorage.getItem("taskflow_members_list");
+          if (membersStr) {
+            const mList = JSON.parse(membersStr);
+            mList.push({
+              name: newUser.fullName,
+              initials: newUser.fullName.trim().split(/\s+/).pop()?.charAt(0).toUpperCase() || "K",
+              email: newUser.email,
+              admin: false,
+              tasks: 0,
+              joined: `Tham gia ${new Date().toLocaleDateString("vi-VN")}`,
+              color: "bg-teal-100 text-teal-700",
+            });
+            localStorage.setItem("taskflow_members_list", JSON.stringify(mList));
+          }
+        } catch {}
+
+        setRegisterSuccess(true);
+        setTimeout(() => {
+          router.push("/user/task/list?subaccount_added=success");
+        }, 1800);
+      } else {
+        // Hiển thị modal đăng ký thành công và tự động chuyển về login
+        setRegisterSuccess(true);
+        setTimeout(() => {
+          router.push("/account/login?registered=success");
+        }, 1800);
+      }
     } catch {
       alert("Đã xảy ra lỗi khi lưu thông tin. Vui lòng thử lại!");
     }
@@ -390,12 +442,24 @@ export default function RegisterPage() {
             </div>
 
             <h3 className="text-[26px] sm:text-[28px] font-bold text-text text-center mt-[24px]">
-              Tạo tài khoản mới
+              {isSubAccountMode ? "Tạo tài khoản phụ" : "Tạo tài khoản mới"}
             </h3>
 
             <p className="text-[14px] text-[#475569] text-center font-[400] mt-1">
-              Điền thông tin bên dưới để bắt đầu quản lý công việc cùng nhóm.
+              {isSubAccountMode
+                ? `Liên kết tài khoản phụ với ${parentAccountEmail}`
+                : "Điền thông tin bên dưới để bắt đầu quản lý công việc cùng nhóm."}
             </p>
+
+            {/* Banner chế độ tài khoản phụ */}
+            {isSubAccountMode && (
+              <div className="mt-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-main font-medium flex items-center justify-between">
+                <span>✨ Đang tạo tài khoản phụ cho: <strong>{parentAccountEmail}</strong></span>
+                <Link href="/user/task/list" className="text-slate-500 hover:text-main text-[11px] underline">
+                  Quay lại
+                </Link>
+              </div>
+            )}
 
             {/* Form Register */}
             <form onSubmit={handleSubmit} className="mt-[24px] flex flex-col gap-[20px]">

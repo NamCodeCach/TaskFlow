@@ -111,23 +111,11 @@ export default function LoginPage() {
     const storedUsersStr = localStorage.getItem("taskflow_users");
     const registeredUsers = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
-    // Thêm sẵn tài khoản mặc định demo hệ thống
+    // Thêm sẵn tài khoản mặc định demo hệ thống (Chỉ DUY NHẤT 1 Quản trị viên)
     const defaultAccounts = [
       {
         fullName: "Lê Trần Hoàng Nam",
         email: "nam.nguyen@taskflow.vn",
-        password: "Pass@123",
-        role: "admin",
-      },
-      {
-        fullName: "Quản trị viên TaskFlow",
-        email: "admin@taskflow.vn",
-        password: "Pass@123",
-        role: "admin",
-      },
-      {
-        fullName: "Admin TaskFlow",
-        email: "admin@gmail.com",
         password: "Pass@123",
         role: "admin",
       },

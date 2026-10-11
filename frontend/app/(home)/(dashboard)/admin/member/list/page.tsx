@@ -17,6 +17,7 @@ import {
   LuLock,
   LuPencil,
   LuShieldAlert,
+  LuShieldCheck,
   LuTrash2,
   LuUserPlus,
 } from "react-icons/lu";
@@ -29,6 +30,7 @@ interface MemberItem {
   tasks: number;
   joined: string;
   color: string;
+  phone?: string;
 }
 
 const AVATAR_COLORS = [
@@ -98,12 +100,12 @@ const defaultMembers: MemberItem[] = [
   },
 ];
 
-// Hàm tạo chữ cái đại diện avatar
+// Hàm tạo chữ cái đại diện avatar: Lấy chữ cái đầu của TÊN GỌI (từ cuối cùng)
 const getInitials = (name: string) => {
-  if (!name) return "TV";
+  if (!name) return "K";
   const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase();
+  const lastName = parts[parts.length - 1];
+  return lastName ? lastName.charAt(0).toUpperCase() : "K";
 };
 
 export default function ThanhVien() {
@@ -133,6 +135,7 @@ export default function ThanhVien() {
   // Form Chỉnh sửa thành viên
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("user");
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -249,7 +252,7 @@ export default function ThanhVien() {
       name: trimmedName,
       initials: getInitials(trimmedName),
       email: trimmedEmail,
-      admin: newRole === "admin",
+      admin: false, // Luôn là thành viên vì hệ thống chỉ có 1 Admin duy nhất
       tasks: 0,
       joined: `Tham gia ${new Date().toLocaleDateString("vi-VN")}`,
       color: AVATAR_COLORS[membersList.length % AVATAR_COLORS.length],
@@ -285,6 +288,7 @@ export default function ThanhVien() {
     setEditingMember(member);
     setEditName(member.name);
     setEditEmail(member.email);
+    setEditPhone(member.phone || "");
     setEditRole(member.admin ? "admin" : "user");
     setEditError(null);
     setActiveMenuEmail(null);
@@ -318,6 +322,9 @@ export default function ThanhVien() {
       return;
     }
 
+    const isMainAdmin = editingMember.email.toLowerCase() === "nam.nguyen@taskflow.vn";
+    const finalRole = isMainAdmin ? "admin" : "user";
+
     const updated = membersList.map((m) => {
       if (m.email.toLowerCase() === editingMember.email.toLowerCase()) {
         return {
@@ -325,7 +332,8 @@ export default function ThanhVien() {
           name: trimmedName,
           initials: getInitials(trimmedName),
           email: trimmedEmail,
-          admin: editRole === "admin",
+          phone: editPhone.trim(),
+          admin: isMainAdmin,
         };
       }
       return m;
@@ -344,7 +352,8 @@ export default function ThanhVien() {
         if (userIdx !== -1) {
           users[userIdx].fullName = trimmedName;
           users[userIdx].email = trimmedEmail;
-          users[userIdx].role = editRole;
+          users[userIdx].phone = editPhone.trim();
+          users[userIdx].role = finalRole;
           localStorage.setItem("taskflow_users", JSON.stringify(users));
         }
       }
@@ -356,8 +365,10 @@ export default function ThanhVien() {
         if (cur.email.toLowerCase() === editingMember.email.toLowerCase()) {
           cur.fullName = trimmedName;
           cur.email = trimmedEmail;
-          cur.role = editRole;
+          cur.phone = editPhone.trim();
+          cur.role = finalRole;
           localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
+          window.dispatchEvent(new Event("taskflow_profile_updated"));
         }
       }
     } catch {}
@@ -818,40 +829,15 @@ export default function ThanhVien() {
                 {/* Vai trò */}
                 <div className="flex w-full flex-col gap-[6px]">
                   <label className="text-[13px] font-semibold text-slate-700">Vai trò phân quyền</label>
-                  <div className="grid grid-cols-2 gap-[12px]">
-                    <label
-                      className={`flex cursor-pointer items-center gap-[10px] rounded-[10px] border px-[12px] py-[10px] text-[13.5px] transition ${
-                        newRole === "user"
-                          ? "border-main bg-indigo-50/60 font-semibold text-main"
-                          : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="newRole"
-                        checked={newRole === "user"}
-                        onChange={() => setNewRole("user")}
-                        className="h-[16px] w-[16px] accent-main"
-                      />
-                      <span>👤 Thành viên (User)</span>
-                    </label>
-
-                    <label
-                      className={`flex cursor-pointer items-center gap-[10px] rounded-[10px] border px-[12px] py-[10px] text-[13.5px] transition ${
-                        newRole === "admin"
-                          ? "border-main bg-indigo-50/60 font-semibold text-main"
-                          : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="newRole"
-                        checked={newRole === "admin"}
-                        onChange={() => setNewRole("admin")}
-                        className="h-[16px] w-[16px] accent-main"
-                      />
-                      <span>👑 Quản trị viên (Admin)</span>
-                    </label>
+                  <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                    <span className="text-base">🛡️</span>
+                    <span>
+                      Hệ thống áp dụng chính sách <strong>1 Quản trị viên duy nhất</strong>. Tất cả tài khoản mới tạo mặc định là <strong>Thành viên (User)</strong>.
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 text-main font-semibold text-[13px]">
+                    <LuShieldCheck size={16} />
+                    <span>👤 Vai trò: Thành viên (User)</span>
                   </div>
                 </div>
 
@@ -973,44 +959,42 @@ export default function ThanhVien() {
                   </div>
                 </div>
 
+                {/* Số điện thoại (Chỉ Admin mới có quyền sửa) */}
+                <div className="flex w-full flex-col gap-[6px]">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-semibold text-slate-700">
+                      Số điện thoại liên hệ
+                    </label>
+                    <span className="text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold border border-indigo-200">
+                      Chỉ Admin được sửa
+                    </span>
+                  </div>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="Ví dụ: 0912345678"
+                    className="rounded-[10px] border border-slate-200 px-[12px] py-[10px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    🔒 Thành viên chỉ được nhập số điện thoại một lần. Chỉ Admin mới có quyền cập nhật lại tại đây.
+                  </p>
+                </div>
+
                 {/* Vai trò */}
                 <div className="flex w-full flex-col gap-[6px]">
                   <label className="text-[13px] font-semibold text-slate-700">Vai trò phân quyền</label>
-                  <div className="grid grid-cols-2 gap-[12px]">
-                    <label
-                      className={`flex cursor-pointer items-center gap-[10px] rounded-[10px] border px-[12px] py-[10px] text-[13.5px] transition ${
-                        editRole === "user"
-                          ? "border-main bg-indigo-50/60 font-semibold text-main"
-                          : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="editRole"
-                        checked={editRole === "user"}
-                        onChange={() => setEditRole("user")}
-                        className="h-[16px] w-[16px] accent-main"
-                      />
-                      <span>👤 Thành viên (User)</span>
-                    </label>
-
-                    <label
-                      className={`flex cursor-pointer items-center gap-[10px] rounded-[10px] border px-[12px] py-[10px] text-[13.5px] transition ${
-                        editRole === "admin"
-                          ? "border-main bg-indigo-50/60 font-semibold text-main"
-                          : "border-slate-200 hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="editRole"
-                        checked={editRole === "admin"}
-                        onChange={() => setEditRole("admin")}
-                        className="h-[16px] w-[16px] accent-main"
-                      />
-                      <span>👑 Quản trị viên (Admin)</span>
-                    </label>
-                  </div>
+                  {editingMember.email.toLowerCase() === "nam.nguyen@taskflow.vn" ? (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 text-main font-semibold text-[13px]">
+                      <LuShieldCheck size={16} />
+                      <span>👑 Quản trị viên (Admin duy nhất của hệ thống)</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-semibold text-[13px]">
+                      <LuShieldCheck size={16} />
+                      <span>👤 Thành viên (User) - Không thể nâng cấp vì hệ thống chỉ có 1 Admin</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Buttons */}
