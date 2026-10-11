@@ -27,6 +27,10 @@ export default function LoginPage() {
 
   // Đọc dữ liệu khóa & kiểm tra URL query khi vào trang
   useEffect(() => {
+    // Luôn đảm bảo ô nhập trống hoàn toàn khi tải trang
+    setEmail("");
+    setPassword("");
+
     // Kiểm tra nếu vừa đăng ký thành công chuyển về
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -231,7 +235,12 @@ export default function LoginPage() {
             )}
 
             {/* Form Login */}
-            <form onSubmit={handleLogin} className="mt-[24px] flex flex-col gap-[20px]">
+            <form
+              onSubmit={handleLogin}
+              autoComplete="off"
+              noValidate
+              className="mt-[24px] flex flex-col gap-[20px]"
+            >
               {/* Email */}
               <div className="flex flex-col gap-[8px]">
                 <label htmlFor="email-user" className="text-[#475569] text-[14px] font-medium">
@@ -241,10 +250,13 @@ export default function LoginPage() {
                   <MdOutlineEmail className="text-gray-400 text-[18px] shrink-0" />
                   <input
                     type="email"
-                    name="email-user"
+                    name="taskflow_user_email"
                     id="email-user"
                     required
                     autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
                     disabled={isLocked}
                     value={email}
                     onChange={(e) => {
@@ -266,12 +278,13 @@ export default function LoginPage() {
                   <LuLockKeyhole className="text-gray-400 text-[18px] shrink-0" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    name="password-user"
+                    name="taskflow_user_password"
                     id="password-user"
                     required
                     autoComplete="new-password"
                     disabled={isLocked}
                     value={password}
+                    placeholder="Nhập mật khẩu"
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (errorMessage) setErrorMessage(null);
