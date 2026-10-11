@@ -122,7 +122,11 @@ export const Header = () => {
     loadUserData();
 
     // Lắng nghe sự kiện cập nhật profile từ trang Profile
-    const handleProfileUpdate = () => {
+    const handleProfileUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<UserProfile>;
+      if (customEvent.detail && customEvent.detail.fullName) {
+        setCurrentUser({ ...customEvent.detail });
+      }
       loadUserData();
     };
     window.addEventListener("taskflow_profile_updated", handleProfileUpdate);

@@ -45,6 +45,9 @@ export default function UserProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [newAvatarSelected, setNewAvatarSelected] = useState<string | null>(null);
 
+  // Modal thông báo thành công
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   // Lỗi & thông báo
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -178,6 +181,7 @@ export default function UserProfilePage() {
     const trimmedName = nameInput.trim();
     if (!trimmedName) {
       setErrorMsg("Họ và tên không được để trống!");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -188,6 +192,7 @@ export default function UserProfilePage() {
       // Kiểm tra định dạng số điện thoại Việt Nam (10 số, bắt đầu bằng 0)
       if (!/(84|0[3|5|7|8|9])+([0-9]{8})\b/.test(cleanPhone)) {
         setErrorMsg("Số điện thoại không đúng định dạng (Ví dụ: 0912345678)!");
+        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       finalPhone = cleanPhone;
@@ -197,6 +202,7 @@ export default function UserProfilePage() {
     const isNameChanged = trimmedName !== currentUser.fullName;
     if (isNameChanged && isNameLockedToday) {
       setErrorMsg("🔒 Tên người dùng đã được cập nhật hôm nay. Bạn không thể đổi thêm trong ngày!");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -204,6 +210,7 @@ export default function UserProfilePage() {
     const isAvatarChanged = Boolean(newAvatarSelected && newAvatarSelected !== currentUser.avatar);
     if (isAvatarChanged && isAvatarLockedToday) {
       setErrorMsg("🔒 Bạn đã thay đổi ảnh đại diện hôm nay. Không thể đổi thêm trong ngày!");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -267,11 +274,15 @@ export default function UserProfilePage() {
       setCurrentUser(updatedUser);
       setNewAvatarSelected(null);
       setSuccessMsg("✓ Cập nhật thông tin cá nhân thành công!");
+      setShowSuccessModal(true);
 
-      // Bắn sự kiện để Header cập nhật avatar và tên ngay lập tức
-      window.dispatchEvent(new Event("taskflow_profile_updated"));
+      // Bắn sự kiện kèm payload detail để Header cập nhật avatar và tên ngay lập tức
+      window.dispatchEvent(
+        new CustomEvent("taskflow_profile_updated", { detail: updatedUser })
+      );
     } catch {
       setErrorMsg("Đã xảy ra lỗi khi lưu thông tin. Vui lòng thử lại!");
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setIsSaving(false);
     }
@@ -573,34 +584,104 @@ export default function UserProfilePage() {
             </div>
           </section>
 
-          {/* 3. NÚT XÁC NHẬN */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <LuInfo size={16} className="text-main shrink-0" />
-              <span>
-                Các thông tin cho phép chỉnh sửa sẽ được lưu ngay sau khi bạn bấm <strong>Xác nhận</strong>.
-              </span>
-            </div>
+          {/* 3. NÚT XÁC NHẬN & THÔNG BÁO VỊ TRÍ NÚT */}
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+            {/* Thông báo kết quả ngay vị trí nút bấm */}
+            {successMsg && (
+              <div className="w-full p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                <LuCheck className="text-emerald-600 shrink-0 text-base" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+            {errorMsg && (
+              <div className="w-full p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                <LuShieldAlert className="text-red-600 shrink-0 text-base" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
-            <div className="flex items-center gap-3">
-              <Link
-                href="/user/task/list"
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
-              >
-                Quay lại Task
-              </Link>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <LuInfo size={16} className="text-main shrink-0" />
+                <span>
+                  Các thông tin cho phép chỉnh sửa sẽ được lưu ngay sau khi bạn bấm <strong>Xác nhận</strong>.
+                </span>
+              </div>
 
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="flex items-center gap-2 rounded-xl bg-main px-6 py-2.5 text-xs font-bold text-white hover:bg-main/90 transition shadow-sm cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed"
-              >
-                <LuCheck size={16} />
-                {isSaving ? "Đang lưu..." : "Xác nhận thay đổi"}
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/user/task/list"
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Quay lại Task
+                </Link>
+
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 rounded-xl bg-main px-6 py-2.5 text-xs font-bold text-white hover:bg-main/90 transition shadow-sm cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  <LuCheck size={16} />
+                  {isSaving ? "Đang lưu..." : "Xác nhận thay đổi"}
+                </button>
+              </div>
             </div>
           </div>
         </form>
+
+        {/* Modal Thông Báo Cập Nhật Thành Công */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-[420px] rounded-3xl bg-white p-6 shadow-2xl text-center flex flex-col items-center border border-slate-100 animate-in zoom-in-95 duration-200">
+              <div className="h-16 w-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mb-4 shadow-inner">
+                <LuCheck />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900">
+                Cập nhật thành công!
+              </h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Thông tin cá nhân và ảnh đại diện đã được lưu và đồng bộ toàn bộ hệ thống ngay lập tức mà không cần tải lại trang.
+              </p>
+
+              {/* Tóm tắt thông tin vừa đổi */}
+              <div className="mt-4 w-full rounded-2xl bg-slate-50 p-3.5 border border-slate-200/70 text-left flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 text-white font-bold text-base grid place-items-center shrink-0 overflow-hidden ring-2 ring-pink-100">
+                  {currentUser.avatar ? (
+                    <img src={currentUser.avatar} alt={currentUser.fullName} className="h-full w-full object-cover" />
+                  ) : (
+                    <span>{getInitials(currentUser.fullName)}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-slate-800 text-sm truncate">{currentUser.fullName}</div>
+                  <div className="text-slate-400 text-xs truncate">{currentUser.email}</div>
+                  {currentUser.phone && (
+                    <div className="text-emerald-700 text-xs font-medium flex items-center gap-1 mt-0.5">
+                      <LuShieldCheck size={13} />
+                      <span>SĐT: {currentUser.phone} (Đã khóa)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 flex w-full gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSuccessModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Ở lại trang
+                </button>
+                <Link
+                  href="/user/task/list"
+                  className="flex-1 py-2.5 rounded-xl bg-main text-white text-xs font-bold hover:bg-main/90 transition text-center shadow-sm"
+                >
+                  Về trang Task
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
