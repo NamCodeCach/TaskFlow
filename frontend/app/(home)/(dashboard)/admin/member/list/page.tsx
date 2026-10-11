@@ -167,6 +167,13 @@ export default function ThanhVien() {
         } catch {}
       }
 
+      // Đọc từ điển số điện thoại taskflow_user_phones
+      let phoneMap: Record<string, string> = {};
+      try {
+        const pStr = localStorage.getItem("taskflow_user_phones");
+        if (pStr) phoneMap = JSON.parse(pStr);
+      } catch {}
+
       // Đọc thêm tài khoản và ĐỒNG BỘ SỐ ĐIỆN THOẠI từ taskflow_users
       const usersStr = localStorage.getItem("taskflow_users");
       if (usersStr) {
@@ -176,16 +183,17 @@ export default function ThanhVien() {
             const memberIdx = baseList.findIndex(
               (m) => m.email.toLowerCase() === u.email.toLowerCase()
             );
+            const userPhone = phoneMap[u.email.toLowerCase()] || u.phone || "";
             if (memberIdx !== -1) {
               // Cập nhật số điện thoại và tên mới nhất từ thông tin người dùng
-              if (u.phone) baseList[memberIdx].phone = u.phone;
+              if (userPhone) baseList[memberIdx].phone = userPhone;
               if (u.fullName) baseList[memberIdx].name = u.fullName;
             } else {
               baseList.push({
                 name: u.fullName,
                 initials: getInitials(u.fullName),
                 email: u.email,
-                phone: u.phone || "",
+                phone: userPhone,
                 admin: u.role === "admin",
                 tasks: 0,
                 joined: "Tham gia gần đây",
@@ -195,6 +203,12 @@ export default function ThanhVien() {
           });
         } catch {}
       }
+
+      // Đảm bảo mọi thành viên trong baseList đều lấy số điện thoại mới nhất từ phoneMap
+      baseList = baseList.map((m) => {
+        const ph = phoneMap[m.email.toLowerCase()] || m.phone || "";
+        return { ...m, phone: ph };
+      });
 
       setMembersList([...baseList]);
       localStorage.setItem("taskflow_members_list", JSON.stringify(baseList));
@@ -290,21 +304,33 @@ export default function ThanhVien() {
 
   // Mở modal Chỉnh sửa
   const handleStartEdit = (member: MemberItem) => {
-    // Luôn truy vấn số điện thoại mới nhất từ taskflow_users
+    // Luôn truy vấn số điện thoại mới nhất từ taskflow_user_phones và taskflow_users
     let currentPhone = member.phone || "";
     try {
-      const usersStr = localStorage.getItem("taskflow_users");
-      if (usersStr) {
-        const users = JSON.parse(usersStr);
-        const u = users.find(
-          (x: { email: string; phone?: string }) =>
-            x.email.toLowerCase() === member.email.toLowerCase()
-        );
-        if (u && u.phone) {
-          currentPhone = u.phone;
+      const pStr = localStorage.getItem("taskflow_user_phones");
+      if (pStr) {
+        const phoneMap = JSON.parse(pStr);
+        if (phoneMap[member.email.toLowerCase()]) {
+          currentPhone = phoneMap[member.email.toLowerCase()];
         }
       }
     } catch {}
+
+    if (!currentPhone) {
+      try {
+        const usersStr = localStorage.getItem("taskflow_users");
+        if (usersStr) {
+          const users = JSON.parse(usersStr);
+          const u = users.find(
+            (x: { email: string; phone?: string }) =>
+              x.email.toLowerCase() === member.email.toLowerCase()
+          );
+          if (u && u.phone) {
+            currentPhone = u.phone;
+          }
+        }
+      } catch {}
+    }
 
     setEditingMember(member);
     setEditName(member.name);
@@ -362,22 +388,39 @@ export default function ThanhVien() {
 
     updateAndPersistMembers(updated);
 
+    // Đồng bộ vào taskflow_user_phones
+    try {
+      const pStr = localStorage.getItem("taskflow_user_phones");
+      const phoneMap = pStr ? JSON.parse(pStr) : {};
+      phoneMap[editingMember.email.toLowerCase()] = editPhone.trim();
+      localStorage.setItem("taskflow_user_phones", JSON.stringify(phoneMap));
+    } catch {}
+
     // Đồng bộ vào taskflow_users trong localStorage
     try {
       const usersStr = localStorage.getItem("taskflow_users");
+      let users = [];
       if (usersStr) {
-        const users = JSON.parse(usersStr);
-        const userIdx = users.findIndex(
-          (u: { email: string }) => u.email.toLowerCase() === editingMember.email.toLowerCase()
-        );
-        if (userIdx !== -1) {
-          users[userIdx].fullName = trimmedName;
-          users[userIdx].email = trimmedEmail;
-          users[userIdx].phone = editPhone.trim();
-          users[userIdx].role = finalRole;
-          localStorage.setItem("taskflow_users", JSON.stringify(users));
-        }
+        try { users = JSON.parse(usersStr); } catch {}
       }
+      const userIdx = users.findIndex(
+        (u: { email: string }) => u.email.toLowerCase() === editingMember.email.toLowerCase()
+      );
+      if (userIdx !== -1) {
+        users[userIdx].fullName = trimmedName;
+        users[userIdx].email = trimmedEmail;
+        users[userIdx].phone = editPhone.trim();
+        users[userIdx].role = finalRole;
+      } else {
+        users.push({
+          fullName: trimmedName,
+          email: trimmedEmail,
+          phone: editPhone.trim(),
+          role: finalRole,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      localStorage.setItem("taskflow_users", JSON.stringify(users));
 
       // Nếu chỉnh sửa tài khoản đang đăng nhập, cập nhật taskflow_current_user
       const curUserStr = localStorage.getItem("taskflow_current_user");
