@@ -337,15 +337,15 @@ export default function LoginPage() {
                 <span className="text-slate-500 text-[13px]">Liên hệ quản trị viên</span>
               </div>
 
-              {/* Box tài khoản mẫu tiện lợi cho chạy thử / demo */}
+              {/* Gợi ý email tài khoản (Tuyệt đối KHÔNG điền sẵn mật khẩu) */}
               <div className="mt-2 pt-4 border-t border-slate-100 flex flex-col gap-2 text-xs">
-                <span className="font-semibold text-slate-600">Chọn nhanh tài khoản để thử nghiệm:</span>
+                <span className="font-semibold text-slate-600">Gợi ý email đăng nhập (Mật khẩu tự nhập):</span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       setEmail("nam.nguyen@taskflow.vn");
-                      setPassword("Pass@123");
+                      setPassword(""); // Tuyệt đối không điền sẵn mật khẩu
                       setErrorMessage(null);
                     }}
                     className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-left hover:bg-indigo-100 transition cursor-pointer"
@@ -357,7 +357,7 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => {
                       setEmail("kiet.nguyen@taskflow.vn");
-                      setPassword("Pass@123");
+                      setPassword(""); // Tuyệt đối không điền sẵn mật khẩu
                       setErrorMessage(null);
                     }}
                     className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left hover:bg-slate-100 transition cursor-pointer"
@@ -366,9 +366,6 @@ export default function LoginPage() {
                     <div className="text-[11px] text-slate-500 truncate">kiet.nguyen@taskflow.vn</div>
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-400 text-center italic">
-                  Mật khẩu mặc định: <code className="font-semibold text-slate-600">Pass@123</code>
-                </p>
               </div>
             </form>
           </div>

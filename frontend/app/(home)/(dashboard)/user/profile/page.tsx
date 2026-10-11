@@ -240,19 +240,29 @@ export default function UserProfilePage() {
         }
       }
 
-      // 3. Cập nhật taskflow_members_list
+      // 3. Cập nhật taskflow_members_list đồng bộ số điện thoại sang Admin
       const membersStr = localStorage.getItem("taskflow_members_list");
-      if (membersStr) {
-        const members = JSON.parse(membersStr);
-        const mIdx = members.findIndex(
-          (m: { email: string }) => m.email.toLowerCase() === updatedUser.email.toLowerCase()
-        );
-        if (mIdx !== -1) {
-          members[mIdx].name = updatedUser.fullName;
-          members[mIdx].initials = getInitials(updatedUser.fullName);
-          localStorage.setItem("taskflow_members_list", JSON.stringify(members));
-        }
+      let members = membersStr ? JSON.parse(membersStr) : [];
+      const mIdx = members.findIndex(
+        (m: { email: string }) => m.email.toLowerCase() === updatedUser.email.toLowerCase()
+      );
+      if (mIdx !== -1) {
+        members[mIdx].name = updatedUser.fullName;
+        members[mIdx].initials = getInitials(updatedUser.fullName);
+        members[mIdx].phone = updatedUser.phone; // Đồng bộ số điện thoại sang admin
+      } else {
+        members.push({
+          name: updatedUser.fullName,
+          initials: getInitials(updatedUser.fullName),
+          email: updatedUser.email,
+          phone: updatedUser.phone,
+          admin: updatedUser.role === "admin",
+          tasks: 0,
+          joined: "Tham gia gần đây",
+          color: "bg-teal-100 text-teal-700",
+        });
       }
+      localStorage.setItem("taskflow_members_list", JSON.stringify(members));
 
       setCurrentUser(updatedUser);
       setNewAvatarSelected(null);

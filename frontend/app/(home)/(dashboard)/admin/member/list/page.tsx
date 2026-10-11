@@ -167,20 +167,25 @@ export default function ThanhVien() {
         } catch {}
       }
 
-      // Đọc thêm tài khoản đăng ký mới từ taskflow_users nếu chưa có trong list
+      // Đọc thêm tài khoản và ĐỒNG BỘ SỐ ĐIỆN THOẠI từ taskflow_users
       const usersStr = localStorage.getItem("taskflow_users");
       if (usersStr) {
         try {
           const registered = JSON.parse(usersStr);
-          registered.forEach((u: { fullName: string; email: string; role?: string }) => {
-            const exists = baseList.some(
+          registered.forEach((u: { fullName: string; email: string; role?: string; phone?: string }) => {
+            const memberIdx = baseList.findIndex(
               (m) => m.email.toLowerCase() === u.email.toLowerCase()
             );
-            if (!exists) {
+            if (memberIdx !== -1) {
+              // Cập nhật số điện thoại và tên mới nhất từ thông tin người dùng
+              if (u.phone) baseList[memberIdx].phone = u.phone;
+              if (u.fullName) baseList[memberIdx].name = u.fullName;
+            } else {
               baseList.push({
                 name: u.fullName,
                 initials: getInitials(u.fullName),
                 email: u.email,
+                phone: u.phone || "",
                 admin: u.role === "admin",
                 tasks: 0,
                 joined: "Tham gia gần đây",
@@ -285,10 +290,26 @@ export default function ThanhVien() {
 
   // Mở modal Chỉnh sửa
   const handleStartEdit = (member: MemberItem) => {
+    // Luôn truy vấn số điện thoại mới nhất từ taskflow_users
+    let currentPhone = member.phone || "";
+    try {
+      const usersStr = localStorage.getItem("taskflow_users");
+      if (usersStr) {
+        const users = JSON.parse(usersStr);
+        const u = users.find(
+          (x: { email: string; phone?: string }) =>
+            x.email.toLowerCase() === member.email.toLowerCase()
+        );
+        if (u && u.phone) {
+          currentPhone = u.phone;
+        }
+      }
+    } catch {}
+
     setEditingMember(member);
     setEditName(member.name);
     setEditEmail(member.email);
-    setEditPhone(member.phone || "");
+    setEditPhone(currentPhone);
     setEditRole(member.admin ? "admin" : "user");
     setEditError(null);
     setActiveMenuEmail(null);
@@ -650,9 +671,14 @@ export default function ThanhVien() {
                             </div>
                           </td>
 
-                          {/* Email */}
-                          <td className="px-5 py-3.5 text-[13px] text-slate-600 font-mono">
-                            {m.email}
+                          {/* Email & Số điện thoại */}
+                          <td className="px-5 py-3.5">
+                            <div className="text-[13px] text-slate-600 font-mono">{m.email}</div>
+                            {m.phone && (
+                              <div className="mt-0.5 text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                                <span>📞</span> {m.phone}
+                              </div>
+                            )}
                           </td>
 
                           {/* Vai trò */}
