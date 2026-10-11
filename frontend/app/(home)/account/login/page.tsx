@@ -244,6 +244,7 @@ export default function LoginPage() {
                     name="email-user"
                     id="email-user"
                     required
+                    autoComplete="off"
                     disabled={isLocked}
                     value={email}
                     onChange={(e) => {
@@ -268,6 +269,7 @@ export default function LoginPage() {
                     name="password-user"
                     id="password-user"
                     required
+                    autoComplete="new-password"
                     disabled={isLocked}
                     value={password}
                     onChange={(e) => {
@@ -335,37 +337,6 @@ export default function LoginPage() {
                 </Link>
                 <span className="text-slate-400">|</span>
                 <span className="text-slate-500 text-[13px]">Liên hệ quản trị viên</span>
-              </div>
-
-              {/* Gợi ý email tài khoản (Tuyệt đối KHÔNG điền sẵn mật khẩu) */}
-              <div className="mt-2 pt-4 border-t border-slate-100 flex flex-col gap-2 text-xs">
-                <span className="font-semibold text-slate-600">Gợi ý email đăng nhập (Mật khẩu tự nhập):</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail("nam.nguyen@taskflow.vn");
-                      setPassword(""); // Tuyệt đối không điền sẵn mật khẩu
-                      setErrorMessage(null);
-                    }}
-                    className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-left hover:bg-indigo-100 transition cursor-pointer"
-                  >
-                    <div className="font-bold text-main flex items-center gap-1">👑 Quản trị viên (Admin)</div>
-                    <div className="text-[11px] text-slate-500 truncate">nam.nguyen@taskflow.vn</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail("kiet.nguyen@taskflow.vn");
-                      setPassword(""); // Tuyệt đối không điền sẵn mật khẩu
-                      setErrorMessage(null);
-                    }}
-                    className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-left hover:bg-slate-100 transition cursor-pointer"
-                  >
-                    <div className="font-bold text-slate-700 flex items-center gap-1">👤 Thành viên (User)</div>
-                    <div className="text-[11px] text-slate-500 truncate">kiet.nguyen@taskflow.vn</div>
-                  </button>
-                </div>
               </div>
             </form>
           </div>
