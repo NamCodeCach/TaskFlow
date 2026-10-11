@@ -1,11 +1,30 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { CiCalendar } from "react-icons/ci";
 import { FaSortAmountDown } from "react-icons/fa";
 import { MdOutlineFileUpload } from "react-icons/md";
 
 export default function Page() {
+  const [userName, setUserName] = useState("Anh Kiệt");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedUserStr = localStorage.getItem("taskflow_current_user");
+      if (savedUserStr) {
+        try {
+          const u = JSON.parse(savedUserStr);
+          if (u.fullName) {
+            setUserName(u.fullName);
+          }
+        } catch {}
+      }
+    }
+  }, []);
+
   return (
     <div className="flex-1">
-      <h1 className="text-2xl font-bold text-text">Xin chào, Thùy Linh 👋</h1>
+      <h1 className="text-2xl font-bold text-text">Xin chào, {userName} 👋</h1>
       <p className="mt-1 text-sm text-slate-500">
         Bạn có 2 task cần xử lý. Cùng tạo nên một ngày làm việc hiệu quả!
       </p>
