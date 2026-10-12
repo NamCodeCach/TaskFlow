@@ -29,9 +29,67 @@ interface UserData {
   isDobLocked?: boolean;
   phone?: string;
   address?: string;
+  isAddressLocked?: boolean;
   lastAvatarChangedDate?: string;
   lastNameChangedDate?: string;
 }
+
+// Danh sách dữ liệu mẫu địa chỉ hành chính Việt Nam đa dạng
+const VIETNAM_ADDRESS_DATA = [
+  "131, Ấp 1, Xã Hiệp Phước, Huyện Nhơn Trạch, Tỉnh Đồng Nai",
+  "131, Ấp 1, Xã Long Phước, Huyện Long Hồ, Tỉnh Vĩnh Long",
+  "131, Ấp 1, Xã An Phước, Huyện Mang Thít, Tỉnh Vĩnh Long",
+  "131, Ấp 1, Xã Hiệp Phước, Huyện Nhà Bè, TP. Hồ Chí Minh",
+  "131, Ấp 1, Xã Tân Nhựt, Huyện Bình Chánh, TP. Hồ Chí Minh",
+  "131, Đường số 1, Phường An Khánh, TP. Thủ Đức, TP. Hồ Chí Minh",
+  "131, Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+  "131, Đường Cách Mạng Tháng 8, Phường 5, Quận Tân Bình, TP. Hồ Chí Minh",
+  "131, Đường Lê Duẩn, Phường Thạch Thang, Quận Hải Châu, TP. Đà Nẵng",
+  "131, Phố Huế, Phường Ngô Thì Nhậm, Quận Hai Bà Trưng, TP. Hà Nội",
+  "1, Ấp 1, Xã Tân Hạnh, Huyện Long Hồ, Tỉnh Vĩnh Long",
+  "1, Đường Trần Hưng Đạo, Phường 1, TP. Vĩnh Long, Tỉnh Vĩnh Long",
+  "12, Ấp 1, Xã Bình Hưng, Huyện Bình Chánh, TP. Hồ Chí Minh",
+  "15, Ấp 2, Xã Hiệp Phước, Huyện Nhơn Trạch, Tỉnh Đồng Nai",
+  "18, Đường Lạch Tray, Phường Lạch Tray, Quận Ngô Quyền, TP. Hải Phòng",
+  "21, Ấp 3, Xã An Phú Tây, Huyện Bình Chánh, TP. Hồ Chí Minh",
+  "27, Đường 30 Tháng 4, Phường An Phú, Quận Ninh Kiều, TP. Cần Thơ",
+  "45, Ấp 2, Xã Tân Thạnh Đông, Huyện Củ Chi, TP. Hồ Chí Minh",
+  "54, Đường Nguyễn Văn Cừ, Phường An Hòa, Quận Ninh Kiều, TP. Cần Thơ",
+  "72, Ấp 1, Xã Vĩnh Lộc B, Huyện Bình Chánh, TP. Hồ Chí Minh",
+  "78, Đại lộ Bình Dương, Phường Phú Hòa, TP. Thủ Dầu Một, Tỉnh Bình Dương",
+  "88, Ấp 3, Xã Phú Xuân, Huyện Nhà Bè, TP. Hồ Chí Minh",
+  "89, Đường Nguyễn Trãi, Phường 2, TP. Vĩnh Long, Tỉnh Vĩnh Long",
+  "99, Đường Võ Nguyên Giáp, Phường Khuê Mỹ, Quận Ngũ Hành Sơn, TP. Đà Nẵng",
+  "101, Ấp Mỹ Hòa, Xã Mỹ Khánh, Huyện Phong Điền, TP. Cần Thơ",
+  "105, Ấp 1, Xã Vĩnh Lộc A, Huyện Bình Chánh, TP. Hồ Chí Minh",
+  "112, Đường Hoàng Diệu, Phường 12, Quận 4, TP. Hồ Chí Minh",
+  "120, Đường Nguyễn Thị Minh Khai, Phường Bến Thành, Quận 1, TP. Hồ Chí Minh",
+  "135, Ấp 2, Xã Phước Kiển, Huyện Nhà Bè, TP. Hồ Chí Minh",
+  "140, Đường Hoàng Hoa Thám, Phường Thụy Khuê, Quận Tây Hồ, TP. Hà Nội",
+  "150, Đường Quang Trung, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh",
+  "155, Đường Bạch Đằng, Phường Hải Châu 1, Quận Hải Châu, TP. Đà Nẵng",
+  "168, Đường Phạm Văn Đồng, Phường Hiệp Bình Chánh, TP. Thủ Đức, TP. Hồ Chí Minh",
+  "182, Ấp 5, Xã Đông Thạnh, Huyện Hóc Môn, TP. Hồ Chí Minh",
+  "200, Phố Huế, Phường Hàng Bài, Quận Hoàn Kiếm, TP. Hà Nội",
+  "210, Đường Phan Chu Trinh, Phường Vạn Thạnh, TP. Nha Trang, Tỉnh Khánh Hòa",
+  "215, Đường Hai Bà Trưng, Phường Tân Định, Quận 1, TP. Hồ Chí Minh",
+  "222, Đường Lê Lợi, Phường Phú Hội, TP. Huế, Tỉnh Thừa Thiên Huế",
+  "245, Đường Hùng Vương, Phường Tiền An, TP. Bắc Ninh, Tỉnh Bắc Ninh",
+  "250, Phố Kim Mã, Phường Kim Mã, Quận Ba Đình, TP. Hà Nội",
+  "300, Đường Điện Biên Phủ, Phường 25, Quận Bình Thạnh, TP. Hồ Chí Minh",
+  "312, Đường Trần Phú, Phường Lộc Thọ, TP. Nha Trang, Tỉnh Khánh Hòa",
+  "350, Đường Hùng Vương, Phường 9, Quận 5, TP. Hồ Chí Minh",
+  "500, Đường Cộng Hòa, Phường 13, Quận Tân Bình, TP. Hồ Chí Minh",
+];
+
+const removeVietnameseTones = (str: string) => {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+};
 
 export default function UserProfilePage() {
   const router = useRouter();
@@ -42,13 +100,17 @@ export default function UserProfilePage() {
     role: "user",
     dob: "",
     isDobLocked: false,
-    address: "TP. Hồ Chí Minh",
+    address: "",
+    isAddressLocked: false,
     phone: "",
   });
 
   // State chỉnh sửa form
   const [nameInput, setNameInput] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
+  const [addressInput, setAddressInput] = useState("");
+  const [showAddressList, setShowAddressList] = useState(false);
+  const addressContainerRef = useRef<HTMLDivElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [newAvatarSelected, setNewAvatarSelected] = useState<string | null>(null);
 
@@ -93,10 +155,28 @@ export default function UserProfilePage() {
   // Số điện thoại chỉ được nhập 1 lần: nếu đã có phone lưu thì khóa vĩnh viễn
   const isPhoneLockedForever = Boolean(currentUser.phone && currentUser.phone.trim() !== "");
 
-  // Ngày sinh chỉ được đặt 1 lần và khóa vĩnh viễn (chỉ Admin mới sửa được)
+  // Ngày sinh chỉ được đặt 1 lần và khóa vĩnh viễn (chỉ Admin mới sửa/mở khóa được)
   const isDobLockedForever = Boolean(currentUser.isDobLocked);
 
-  // Đóng lịch khi click ra ngoài
+  // Địa chỉ chỉ được đặt 1 lần và khóa vĩnh viễn (chỉ Admin mới sửa/mở khóa được)
+  const isAddressLockedForever = Boolean(currentUser.isAddressLocked);
+
+  // Lọc gợi ý địa chỉ thông minh
+  const getFilteredAddresses = () => {
+    const raw = addressInput.trim();
+    if (!raw) return VIETNAM_ADDRESS_DATA.slice(0, 8);
+    const query = removeVietnameseTones(raw);
+    const tokens = query.split(/[\s,]+/).filter((t) => t.length > 0);
+    const matches = VIETNAM_ADDRESS_DATA.filter((addr) => {
+      const norm = removeVietnameseTones(addr);
+      return tokens.every((token) => norm.includes(token));
+    });
+    return matches.slice(0, 15);
+  };
+
+  const filteredAddresses = getFilteredAddresses();
+
+  // Đóng lịch và dropdown địa chỉ khi click ra ngoài
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -105,105 +185,141 @@ export default function UserProfilePage() {
       ) {
         setShowCalendar(false);
       }
+      if (
+        addressContainerRef.current &&
+        !addressContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowAddressList(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Đọc thông tin từ localStorage khi tải trang
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const curStr = localStorage.getItem("taskflow_current_user");
-      let baseUser: UserData = {
-        fullName: "Nguyễn Võ Anh Kiệt",
-        email: "kiet.nguyen@taskflow.vn",
-        role: "user",
-        dob: "",
-        isDobLocked: false,
-        address: "TP. Hồ Chí Minh",
-        phone: "",
-      };
+  // Tải thông tin người dùng từ localStorage
+  const loadProfileData = () => {
+    if (typeof window === "undefined") return;
 
-      if (curStr) {
-        try {
-          const parsed = JSON.parse(curStr);
-          baseUser = { ...baseUser, ...parsed };
-        } catch {}
-      }
+    const curStr = localStorage.getItem("taskflow_current_user");
+    let baseUser: UserData = {
+      fullName: "Nguyễn Võ Anh Kiệt",
+      email: "kiet.nguyen@taskflow.vn",
+      role: "user",
+      dob: "",
+      isDobLocked: false,
+      address: "",
+      isAddressLocked: false,
+      phone: "",
+    };
 
-      // Đọc từ điển ngày sinh taskflow_user_dobs
+    if (curStr) {
       try {
-        const dStr = localStorage.getItem("taskflow_user_dobs");
-        if (dStr) {
-          const dobMap = JSON.parse(dStr);
-          if (dobMap[baseUser.email.toLowerCase()]) {
-            const entry = dobMap[baseUser.email.toLowerCase()];
-            baseUser.dob = entry.dob || baseUser.dob || "";
-            baseUser.isDobLocked = entry.isLocked ?? baseUser.isDobLocked;
-          }
-        }
+        const parsed = JSON.parse(curStr);
+        baseUser = { ...baseUser, ...parsed };
       } catch {}
-
-      // Tìm thông tin chi tiết từ taskflow_users (nếu có dob, phone, address)
-      try {
-        const usersStr = localStorage.getItem("taskflow_users");
-        if (usersStr) {
-          const users = JSON.parse(usersStr);
-          const matched = users.find(
-            (u: { email: string }) => u.email.toLowerCase() === baseUser.email.toLowerCase()
-          );
-          if (matched) {
-            baseUser = {
-              ...baseUser,
-              dob: matched.dob || baseUser.dob || "",
-              isDobLocked: matched.isDobLocked ?? baseUser.isDobLocked,
-              phone: matched.phone || baseUser.phone || "",
-              address: matched.address || baseUser.address || "TP. Hồ Chí Minh",
-              lastAvatarChangedDate: matched.lastAvatarChangedDate || baseUser.lastAvatarChangedDate,
-              lastNameChangedDate: matched.lastNameChangedDate || baseUser.lastNameChangedDate,
-              avatar: matched.avatar || baseUser.avatar,
-            };
-          }
-        }
-      } catch {}
-
-      // Đọc số điện thoại từ taskflow_user_phones
-      try {
-        const pStr = localStorage.getItem("taskflow_user_phones");
-        if (pStr) {
-          const phoneMap = JSON.parse(pStr);
-          if (phoneMap[baseUser.email.toLowerCase()]) {
-            baseUser.phone = phoneMap[baseUser.email.toLowerCase()];
-          }
-        }
-      } catch {}
-
-      setCurrentUser(baseUser);
-      setNameInput(baseUser.fullName);
-      setPhoneInput(baseUser.phone || "");
-
-      // Khởi tạo ngày / tháng / năm cho ô nhập
-      if (baseUser.dob) {
-        const parts = baseUser.dob.split("/");
-        if (parts.length === 3) {
-          setDayVal(parts[0]);
-          setMonthVal(parts[1]);
-          setYearVal(parts[2]);
-          const parsedM = parseInt(parts[1], 10);
-          const parsedY = parseInt(parts[2], 10);
-          if (!isNaN(parsedM) && parsedM >= 1 && parsedM <= 12) setCalMonth(parsedM - 1);
-          if (!isNaN(parsedY) && parsedY >= 1900) setCalYear(parsedY);
-        }
-      } else {
-        setDayVal("");
-        setMonthVal("");
-        setYearVal("");
-      }
-
-      if (baseUser.avatar) {
-        setAvatarPreview(baseUser.avatar);
-      }
     }
+
+    // Đọc từ điển ngày sinh taskflow_user_dobs
+    try {
+      const dStr = localStorage.getItem("taskflow_user_dobs");
+      if (dStr) {
+        const dobMap = JSON.parse(dStr);
+        if (dobMap[baseUser.email.toLowerCase()]) {
+          const entry = dobMap[baseUser.email.toLowerCase()];
+          baseUser.dob = entry.dob || baseUser.dob || "";
+          baseUser.isDobLocked = entry.isLocked ?? baseUser.isDobLocked;
+        }
+      }
+    } catch {}
+
+    // Đọc từ điển địa chỉ taskflow_user_addresses
+    try {
+      const aStr = localStorage.getItem("taskflow_user_addresses");
+      if (aStr) {
+        const addrMap = JSON.parse(aStr);
+        if (addrMap[baseUser.email.toLowerCase()]) {
+          const entry = addrMap[baseUser.email.toLowerCase()];
+          baseUser.address = entry.address || baseUser.address || "";
+          baseUser.isAddressLocked = entry.isLocked ?? baseUser.isAddressLocked;
+        }
+      }
+    } catch {}
+
+    // Tìm thông tin chi tiết từ taskflow_users
+    try {
+      const usersStr = localStorage.getItem("taskflow_users");
+      if (usersStr) {
+        const users = JSON.parse(usersStr);
+        const matched = users.find(
+          (u: { email: string }) => u.email.toLowerCase() === baseUser.email.toLowerCase()
+        );
+        if (matched) {
+          baseUser = {
+            ...baseUser,
+            dob: matched.dob || baseUser.dob || "",
+            isDobLocked: matched.isDobLocked ?? baseUser.isDobLocked,
+            phone: matched.phone || baseUser.phone || "",
+            address: matched.address || baseUser.address || "",
+            isAddressLocked: matched.isAddressLocked ?? baseUser.isAddressLocked,
+            lastAvatarChangedDate: matched.lastAvatarChangedDate || baseUser.lastAvatarChangedDate,
+            lastNameChangedDate: matched.lastNameChangedDate || baseUser.lastNameChangedDate,
+            avatar: matched.avatar || baseUser.avatar,
+          };
+        }
+      }
+    } catch {}
+
+    // Đọc số điện thoại từ taskflow_user_phones
+    try {
+      const pStr = localStorage.getItem("taskflow_user_phones");
+      if (pStr) {
+        const phoneMap = JSON.parse(pStr);
+        if (phoneMap[baseUser.email.toLowerCase()]) {
+          baseUser.phone = phoneMap[baseUser.email.toLowerCase()];
+        }
+      }
+    } catch {}
+
+    setCurrentUser(baseUser);
+    setNameInput(baseUser.fullName);
+    setPhoneInput(baseUser.phone || "");
+    setAddressInput(baseUser.address || "");
+
+    // Khởi tạo ngày / tháng / năm cho ô nhập
+    if (baseUser.dob) {
+      const parts = baseUser.dob.split("/");
+      if (parts.length === 3) {
+        setDayVal(parts[0]);
+        setMonthVal(parts[1]);
+        setYearVal(parts[2]);
+        const parsedM = parseInt(parts[1], 10);
+        const parsedY = parseInt(parts[2], 10);
+        if (!isNaN(parsedM) && parsedM >= 1 && parsedM <= 12) setCalMonth(parsedM - 1);
+        if (!isNaN(parsedY) && parsedY >= 1900) setCalYear(parsedY);
+      }
+    } else {
+      setDayVal("");
+      setMonthVal("");
+      setYearVal("");
+    }
+
+    if (baseUser.avatar) {
+      setAvatarPreview(baseUser.avatar);
+    }
+  };
+
+  // Đọc thông tin từ localStorage khi tải trang & lắng nghe cập nhật thời gian thực
+  useEffect(() => {
+    loadProfileData();
+
+    const handleProfileSync = () => loadProfileData();
+    window.addEventListener("taskflow_profile_updated", handleProfileSync);
+    window.addEventListener("storage", handleProfileSync);
+
+    return () => {
+      window.removeEventListener("taskflow_profile_updated", handleProfileSync);
+      window.removeEventListener("storage", handleProfileSync);
+    };
   }, []);
 
   // Tính chữ cái đại diện avatar (chữ cái đầu của TÊN GỌI)
@@ -310,6 +426,17 @@ export default function UserProfilePage() {
       }
     }
 
+    // Kiểm tra Địa chỉ thường trú nếu nhập lần đầu hoặc khi được Admin mở khóa
+    let finalAddress = currentUser.address || "";
+    let isAddressNowLocked = currentUser.isAddressLocked || false;
+
+    if (!isAddressLockedForever) {
+      if (addressInput.trim()) {
+        finalAddress = addressInput.trim();
+        isAddressNowLocked = true; // Khóa vĩnh viễn sau khi lưu
+      }
+    }
+
     // Kiểm tra xem có thay đổi Tên không
     const isNameChanged = trimmedName !== currentUser.fullName;
     if (isNameChanged && isNameLockedToday) {
@@ -336,6 +463,8 @@ export default function UserProfilePage() {
         phone: finalPhone,
         dob: finalDob,
         isDobLocked: isDobNowLocked,
+        address: finalAddress,
+        isAddressLocked: isAddressNowLocked,
         avatar: newAvatarSelected ? newAvatarSelected : currentUser.avatar,
         lastAvatarChangedDate: isAvatarChanged ? todayStr : currentUser.lastAvatarChangedDate,
         lastNameChangedDate: isNameChanged ? todayStr : currentUser.lastNameChangedDate,
@@ -357,7 +486,20 @@ export default function UserProfilePage() {
         } catch {}
       }
 
-      // 3. Cập nhật từ điển số điện thoại taskflow_user_phones
+      // 3. Cập nhật từ điển địa chỉ taskflow_user_addresses
+      if (finalAddress) {
+        try {
+          const aStr = localStorage.getItem("taskflow_user_addresses");
+          const addrMap = aStr ? JSON.parse(aStr) : {};
+          addrMap[updatedUser.email.toLowerCase()] = {
+            address: finalAddress,
+            isLocked: isAddressNowLocked,
+          };
+          localStorage.setItem("taskflow_user_addresses", JSON.stringify(addrMap));
+        } catch {}
+      }
+
+      // 4. Cập nhật từ điển số điện thoại taskflow_user_phones
       if (finalPhone) {
         try {
           const pStr = localStorage.getItem("taskflow_user_phones");
@@ -367,7 +509,7 @@ export default function UserProfilePage() {
         } catch {}
       }
 
-      // 4. Cập nhật taskflow_users
+      // 5. Cập nhật taskflow_users
       try {
         const usersStr = localStorage.getItem("taskflow_users");
         let users = [];
@@ -382,6 +524,8 @@ export default function UserProfilePage() {
           users[idx].phone = updatedUser.phone;
           users[idx].dob = updatedUser.dob;
           users[idx].isDobLocked = updatedUser.isDobLocked;
+          users[idx].address = updatedUser.address;
+          users[idx].isAddressLocked = updatedUser.isAddressLocked;
           users[idx].avatar = updatedUser.avatar;
           users[idx].lastAvatarChangedDate = updatedUser.lastAvatarChangedDate;
           users[idx].lastNameChangedDate = updatedUser.lastNameChangedDate;
@@ -392,6 +536,8 @@ export default function UserProfilePage() {
             phone: updatedUser.phone,
             dob: updatedUser.dob,
             isDobLocked: updatedUser.isDobLocked,
+            address: updatedUser.address,
+            isAddressLocked: updatedUser.isAddressLocked,
             avatar: updatedUser.avatar,
             role: updatedUser.role || "user",
             lastAvatarChangedDate: updatedUser.lastAvatarChangedDate,
@@ -402,7 +548,7 @@ export default function UserProfilePage() {
         localStorage.setItem("taskflow_users", JSON.stringify(users));
       } catch {}
 
-      // 5. Cập nhật taskflow_members_list đồng bộ số điện thoại & ngày sinh sang Admin
+      // 6. Cập nhật taskflow_members_list đồng bộ số điện thoại, ngày sinh & địa chỉ sang Admin
       try {
         const membersStr = localStorage.getItem("taskflow_members_list");
         let members = membersStr ? JSON.parse(membersStr) : [];
@@ -414,6 +560,9 @@ export default function UserProfilePage() {
           members[mIdx].initials = getInitials(updatedUser.fullName);
           members[mIdx].phone = updatedUser.phone;
           members[mIdx].dob = updatedUser.dob;
+          members[mIdx].address = updatedUser.address;
+          members[mIdx].isDobLocked = updatedUser.isDobLocked;
+          members[mIdx].isAddressLocked = updatedUser.isAddressLocked;
         } else {
           members.push({
             name: updatedUser.fullName,
@@ -421,6 +570,9 @@ export default function UserProfilePage() {
             email: updatedUser.email,
             phone: updatedUser.phone,
             dob: updatedUser.dob,
+            address: updatedUser.address,
+            isDobLocked: updatedUser.isDobLocked,
+            isAddressLocked: updatedUser.isAddressLocked,
             admin: updatedUser.role === "admin",
             tasks: 0,
             joined: "Tham gia gần đây",
@@ -439,6 +591,7 @@ export default function UserProfilePage() {
             avatar: updatedUser.avatar,
             phone: updatedUser.phone,
             dob: updatedUser.dob,
+            address: updatedUser.address,
           },
         })
       );
@@ -1015,21 +1168,130 @@ export default function UserProfilePage() {
                 </p>
               </div>
 
-              {/* Tỉnh / Thành phố */}
-              <div className="flex flex-col gap-1.5 md:col-span-2">
-                <label className="text-xs font-semibold text-slate-700">
-                  Địa chỉ thường trú / Khu vực
-                </label>
+              {/* Địa chỉ thường trú / Khu vực */}
+              <div
+                ref={addressContainerRef}
+                onMouseEnter={() => {
+                  if (!isAddressLockedForever) setShowAddressList(true);
+                }}
+                className="flex flex-col gap-1.5 md:col-span-2 relative"
+              >
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Địa chỉ thường trú / Khu vực (Số đường, Ấp/Xã, Huyện, Tỉnh/Thành)
+                  </label>
+                  {isAddressLockedForever ? (
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      <LuShieldCheck size={13} />
+                      Đã xác thực
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      Chỉ đặt 1 lần duy nhất!
+                    </span>
+                  )}
+                </div>
+
                 <div className="relative">
                   <input
                     type="text"
-                    disabled
-                    readOnly
-                    value={currentUser.address || "TP. Hồ Chí Minh"}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-100/80 py-2.5 pl-9 pr-3 text-sm text-slate-500 cursor-not-allowed select-none"
+                    disabled={isAddressLockedForever}
+                    readOnly={isAddressLockedForever}
+                    value={isAddressLockedForever ? (currentUser.address || "Chưa thiết lập") : addressInput}
+                    onChange={(e) => {
+                      if (!isAddressLockedForever) {
+                        setAddressInput(e.target.value);
+                        setShowAddressList(true);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (!isAddressLockedForever) setShowAddressList(true);
+                    }}
+                    placeholder="Gõ số nhà, tên đường, ấp, xã, huyện, tỉnh/thành..."
+                    className={`w-full rounded-xl border py-2.5 pl-9 pr-9 text-sm outline-none transition ${
+                      isAddressLockedForever
+                        ? "border-slate-200 bg-slate-100/80 text-slate-600 cursor-not-allowed select-none font-medium"
+                        : "border-slate-200 bg-white text-slate-800 focus:border-main focus:ring-1 focus:ring-main hover:border-slate-300"
+                    }`}
                   />
                   <LuMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  {isAddressLockedForever && (
+                    <LuLock className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                  )}
+
+                  {/* Dropdown danh sách gợi ý địa chỉ */}
+                  {!isAddressLockedForever && showAddressList && (
+                    <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-100">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                          <LuMapPin className="text-main" size={14} />
+                          <span>Danh sách địa chỉ chuẩn (Số đường, Ấp/Xã, Huyện, Tỉnh/Thành)</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400">
+                          {filteredAddresses.length} gợi ý
+                        </span>
+                      </div>
+
+                      <div className="mt-2 max-h-56 overflow-y-auto divide-y divide-slate-50 text-xs">
+                        {filteredAddresses.length > 0 ? (
+                          filteredAddresses.map((addr, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setAddressInput(addr);
+                                setShowAddressList(false);
+                              }}
+                              className="w-full text-left py-2 px-2.5 hover:bg-indigo-50 hover:text-main rounded-lg transition flex items-start gap-2 group cursor-pointer"
+                            >
+                              <LuMapPin
+                                size={14}
+                                className="text-slate-400 group-hover:text-main mt-0.5 shrink-0"
+                              />
+                              <span className="text-slate-700 group-hover:text-main leading-relaxed">
+                                {addr}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-3 text-center text-slate-500">
+                            <p className="text-xs">Không có gợi ý có sẵn khớp hoàn toàn.</p>
+                            {addressInput.trim() && (
+                              <button
+                                type="button"
+                                onClick={() => setShowAddressList(false)}
+                                className="mt-2 px-3 py-1.5 rounded-lg bg-indigo-50 text-main font-semibold text-xs hover:bg-indigo-100 transition cursor-pointer"
+                              >
+                                Sử dụng địa chỉ tự nhập: &quot;{addressInput}&quot;
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Mẹo: Gõ &quot;1&quot;, &quot;131&quot;, &quot;ấp 1&quot;, &quot;vĩnh long&quot; để lọc địa chỉ nhanh</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddressList(false)}
+                          className="text-main font-semibold hover:underline cursor-pointer"
+                        >
+                          Đóng
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                <p className="text-[11px] text-slate-400">
+                  {isAddressLockedForever ? (
+                    <span className="text-slate-500 font-medium">
+                      🔒 Địa chỉ thường trú đã được lưu và khóa bảo mật. Chỉ <strong>Quản trị viên (Admin)</strong> mới có quyền mở khóa.
+                    </span>
+                  ) : (
+                    "⚠️ Lưu ý: Bạn chỉ có thể thiết lập địa chỉ thường trú một lần duy nhất. Sau khi bấm xác nhận, địa chỉ sẽ bị khóa vĩnh viễn."
+                  )}
+                </p>
               </div>
             </div>
 
@@ -1114,6 +1376,11 @@ export default function UserProfilePage() {
                       <div className="text-emerald-700 text-[11px] font-medium flex items-center gap-1">
                         <LuShieldCheck size={13} />
                         <span>SĐT: {currentUser.phone} (Đã khóa)</span>
+                      </div>
+                    )}
+                    {currentUser.address && (
+                      <div className="text-slate-600 text-[11px] font-medium flex items-center gap-1 truncate w-full">
+                        <span>📍</span> <span className="truncate">{currentUser.address} (Đã khóa)</span>
                       </div>
                     )}
                   </div>

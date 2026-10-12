@@ -12,14 +12,20 @@ import {
   IoMailOutline,
 } from "react-icons/io5";
 import {
+  LuCalendar,
   LuCheck,
   LuCopy,
+  LuEye,
   LuKey,
   LuLock,
+  LuMapPin,
   LuPencil,
+  LuPhone,
   LuShieldAlert,
   LuShieldCheck,
   LuTrash2,
+  LuLockOpen,
+  LuUser,
   LuUserCheck,
   LuUserPlus,
 } from "react-icons/lu";
@@ -34,6 +40,9 @@ interface MemberItem {
   color: string;
   phone?: string;
   dob?: string;
+  address?: string;
+  isDobLocked?: boolean;
+  isAddressLocked?: boolean;
   password?: string;
   mustChangePassword?: boolean;
 }
@@ -149,13 +158,8 @@ export default function ThanhVien() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Form Chỉnh sửa thành viên
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editDob, setEditDob] = useState("");
-  const [editRole, setEditRole] = useState<"user" | "admin">("user");
-  const [editError, setEditError] = useState<string | null>(null);
+  // Modal Xem thông tin thành viên
+  const [viewingMember, setViewingMember] = useState<MemberItem | null>(null);
 
   // Form Đặt lại mật khẩu
   const [resetNewPass, setResetNewPass] = useState("Pass@123");
@@ -202,40 +206,90 @@ export default function ThanhVien() {
       if (pStr) phoneMap = JSON.parse(pStr);
     } catch {}
 
-    // Đọc thêm tài khoản và ĐỒNG BỘ SỐ ĐIỆN THOẠI từ taskflow_users
+    // Đọc từ điển ngày sinh taskflow_user_dobs
+    let dobMap: Record<string, { dob: string; isLocked?: boolean }> = {};
+    try {
+      const dStr = localStorage.getItem("taskflow_user_dobs");
+      if (dStr) dobMap = JSON.parse(dStr);
+    } catch {}
+
+    // Đọc từ điển địa chỉ taskflow_user_addresses
+    let addrMap: Record<string, { address: string; isLocked?: boolean }> = {};
+    try {
+      const aStr = localStorage.getItem("taskflow_user_addresses");
+      if (aStr) addrMap = JSON.parse(aStr);
+    } catch {}
+
+    // Đọc thêm tài khoản và ĐỒNG BỘ từ taskflow_users
     const usersStr = localStorage.getItem("taskflow_users");
     if (usersStr) {
       try {
         const registered = JSON.parse(usersStr);
-        registered.forEach((u: { fullName: string; email: string; role?: string; phone?: string }) => {
-          const memberIdx = baseList.findIndex(
-            (m) => m.email.toLowerCase() === u.email.toLowerCase()
-          );
-          const userPhone = phoneMap[u.email.toLowerCase()] || u.phone || "";
-          if (memberIdx !== -1) {
-            // Cập nhật số điện thoại và tên mới nhất từ thông tin người dùng
-            if (userPhone) baseList[memberIdx].phone = userPhone;
-            if (u.fullName) baseList[memberIdx].name = u.fullName;
-          } else {
-            baseList.push({
-              name: u.fullName,
-              initials: getInitials(u.fullName),
-              email: u.email,
-              phone: userPhone,
-              admin: u.role === "admin",
-              tasks: 0,
-              joined: "Tham gia gần đây",
-              color: AVATAR_COLORS[baseList.length % AVATAR_COLORS.length],
-            });
+        registered.forEach(
+          (u: {
+            fullName: string;
+            email: string;
+            role?: string;
+            phone?: string;
+            dob?: string;
+            isDobLocked?: boolean;
+            address?: string;
+            isAddressLocked?: boolean;
+          }) => {
+            const emailLower = u.email.toLowerCase();
+            const memberIdx = baseList.findIndex(
+              (m) => m.email.toLowerCase() === emailLower
+            );
+            const userPhone = phoneMap[emailLower] || u.phone || "";
+            const userDob = dobMap[emailLower]?.dob || u.dob || "";
+            const isDobLocked = dobMap[emailLower]?.isLocked ?? u.isDobLocked ?? false;
+            const userAddress = addrMap[emailLower]?.address || u.address || "";
+            const isAddressLocked = addrMap[emailLower]?.isLocked ?? u.isAddressLocked ?? false;
+
+            if (memberIdx !== -1) {
+              if (userPhone) baseList[memberIdx].phone = userPhone;
+              if (userDob) baseList[memberIdx].dob = userDob;
+              baseList[memberIdx].isDobLocked = isDobLocked;
+              if (userAddress) baseList[memberIdx].address = userAddress;
+              baseList[memberIdx].isAddressLocked = isAddressLocked;
+              if (u.fullName) baseList[memberIdx].name = u.fullName;
+            } else {
+              baseList.push({
+                name: u.fullName,
+                initials: getInitials(u.fullName),
+                email: u.email,
+                phone: userPhone,
+                dob: userDob,
+                isDobLocked,
+                address: userAddress,
+                isAddressLocked,
+                admin: u.role === "admin",
+                tasks: 0,
+                joined: "Tham gia gần đây",
+                color: AVATAR_COLORS[baseList.length % AVATAR_COLORS.length],
+              });
+            }
           }
-        });
+        );
       } catch {}
     }
 
-    // Đảm bảo mọi thành viên trong baseList đều lấy số điện thoại mới nhất từ phoneMap
+    // Đảm bảo mọi thành viên trong baseList đều lấy dữ liệu mới nhất
     baseList = baseList.map((m) => {
-      const ph = phoneMap[m.email.toLowerCase()] || m.phone || "";
-      return { ...m, phone: ph };
+      const emailLower = m.email.toLowerCase();
+      const ph = phoneMap[emailLower] || m.phone || "";
+      const db = dobMap[emailLower]?.dob || m.dob || "";
+      const dbLock = dobMap[emailLower]?.isLocked ?? m.isDobLocked ?? false;
+      const ad = addrMap[emailLower]?.address || m.address || "";
+      const adLock = addrMap[emailLower]?.isLocked ?? m.isAddressLocked ?? false;
+      return {
+        ...m,
+        phone: ph,
+        dob: db,
+        isDobLocked: dbLock,
+        address: ad,
+        isAddressLocked: adLock,
+      };
     });
 
     setMembersList([...baseList]);
@@ -375,190 +429,217 @@ export default function ThanhVien() {
     window.dispatchEvent(new Event("taskflow_members_updated"));
   };
 
-  // Mở modal Chỉnh sửa
-  const handleStartEdit = (member: MemberItem) => {
-    // Luôn truy vấn số điện thoại mới nhất từ taskflow_user_phones và taskflow_users
+  // Mở modal Xem thông tin thành viên (Read-only)
+  const handleStartView = (member: MemberItem) => {
+    const emailLower = member.email.toLowerCase();
     let currentPhone = member.phone || "";
+    let currentDob = member.dob || "";
+    let isDobLocked = member.isDobLocked ?? false;
+    let currentAddress = member.address || "";
+    let isAddressLocked = member.isAddressLocked ?? false;
+
     try {
       const pStr = localStorage.getItem("taskflow_user_phones");
       if (pStr) {
-        const phoneMap = JSON.parse(pStr);
-        if (phoneMap[member.email.toLowerCase()]) {
-          currentPhone = phoneMap[member.email.toLowerCase()];
-        }
+        const pMap = JSON.parse(pStr);
+        if (pMap[emailLower]) currentPhone = pMap[emailLower];
       }
     } catch {}
 
-    if (!currentPhone) {
-      try {
-        const usersStr = localStorage.getItem("taskflow_users");
-        if (usersStr) {
-          const users = JSON.parse(usersStr);
-          const u = users.find(
-            (x: { email: string; phone?: string }) =>
-              x.email.toLowerCase() === member.email.toLowerCase()
-          );
-          if (u && u.phone) {
-            currentPhone = u.phone;
-          }
-        }
-      } catch {}
-    }
-
-    // Đọc ngày sinh từ taskflow_user_dobs hoặc taskflow_users
-    let currentDob = member.dob || "";
     try {
       const dStr = localStorage.getItem("taskflow_user_dobs");
       if (dStr) {
-        const dobMap = JSON.parse(dStr);
-        if (dobMap[member.email.toLowerCase()]) {
-          currentDob = dobMap[member.email.toLowerCase()].dob || currentDob;
+        const dMap = JSON.parse(dStr);
+        if (dMap[emailLower]) {
+          currentDob = dMap[emailLower].dob || currentDob;
+          isDobLocked = dMap[emailLower].isLocked ?? isDobLocked;
         }
       }
     } catch {}
 
-    if (!currentDob) {
-      try {
-        const usersStr = localStorage.getItem("taskflow_users");
-        if (usersStr) {
-          const users = JSON.parse(usersStr);
-          const u = users.find(
-            (x: { email: string; dob?: string }) =>
-              x.email.toLowerCase() === member.email.toLowerCase()
-          );
-          if (u && u.dob) currentDob = u.dob;
+    try {
+      const aStr = localStorage.getItem("taskflow_user_addresses");
+      if (aStr) {
+        const aMap = JSON.parse(aStr);
+        if (aMap[emailLower]) {
+          currentAddress = aMap[emailLower].address || currentAddress;
+          isAddressLocked = aMap[emailLower].isLocked ?? isAddressLocked;
         }
-      } catch {}
-    }
+      }
+    } catch {}
 
-    setEditingMember(member);
-    setEditName(member.name);
-    setEditEmail(member.email);
-    setEditPhone(currentPhone);
-    setEditDob(currentDob);
-    setEditRole(member.admin ? "admin" : "user");
-    setEditError(null);
+    try {
+      const uStr = localStorage.getItem("taskflow_users");
+      if (uStr) {
+        const users = JSON.parse(uStr);
+        const u = users.find((x: { email: string }) => x.email.toLowerCase() === emailLower);
+        if (u) {
+          if (!currentPhone && u.phone) currentPhone = u.phone;
+          if (!currentDob && u.dob) currentDob = u.dob;
+          if (u.isDobLocked !== undefined) isDobLocked = u.isDobLocked;
+          if (!currentAddress && u.address) currentAddress = u.address;
+          if (u.isAddressLocked !== undefined) isAddressLocked = u.isAddressLocked;
+        }
+      }
+    } catch {}
+
+    setViewingMember({
+      ...member,
+      phone: currentPhone,
+      dob: currentDob,
+      isDobLocked,
+      address: currentAddress,
+      isAddressLocked,
+    });
     setActiveMenuEmail(null);
   };
 
-  // 2. Lưu thông tin sau khi chỉnh sửa
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingMember) return;
+  // Admin mở khóa hồ sơ (Ngày sinh & Địa chỉ) cho thành viên
+  const handleUnlockMemberProfile = (member: MemberItem) => {
+    const emailLower = member.email.toLowerCase();
 
-    const trimmedName = editName.trim();
-    const trimmedEmail = editEmail.toLowerCase().trim();
-
-    if (!trimmedName) {
-      setEditError("Họ và tên không được để trống!");
-      return;
-    }
-    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setEditError("Email không hợp lệ!");
-      return;
-    }
-
-    // Kiểm tra trùng email với người khác
-    const emailConflict = membersList.some(
-      (m) =>
-        m.email.toLowerCase() === trimmedEmail &&
-        m.email.toLowerCase() !== editingMember.email.toLowerCase()
-    );
-    if (emailConflict) {
-      setEditError("Email này đang thuộc về một thành viên khác!");
-      return;
-    }
-
-    const isMainAdmin = editingMember.email.toLowerCase() === "nam.nguyen@taskflow.vn";
-    const finalRole = isMainAdmin ? "admin" : "user";
-
-    const updated = membersList.map((m) => {
-      if (m.email.toLowerCase() === editingMember.email.toLowerCase()) {
-        return {
-          ...m,
-          name: trimmedName,
-          initials: getInitials(trimmedName),
-          email: trimmedEmail,
-          phone: editPhone.trim(),
-          dob: editDob.trim(),
-          admin: isMainAdmin,
-        };
-      }
-      return m;
-    });
-
-    updateAndPersistMembers(updated);
-
-    // Đồng bộ vào taskflow_user_phones
+    // 1. Mở khóa ngày sinh trong taskflow_user_dobs
     try {
-      const pStr = localStorage.getItem("taskflow_user_phones");
-      const phoneMap = pStr ? JSON.parse(pStr) : {};
-      phoneMap[editingMember.email.toLowerCase()] = editPhone.trim();
-      localStorage.setItem("taskflow_user_phones", JSON.stringify(phoneMap));
+      const dStr = localStorage.getItem("taskflow_user_dobs");
+      const dobMap = dStr ? JSON.parse(dStr) : {};
+      if (dobMap[emailLower]) {
+        dobMap[emailLower].isLocked = false;
+      } else {
+        dobMap[emailLower] = { dob: member.dob || "", isLocked: false };
+      }
+      localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
     } catch {}
 
-    // Đồng bộ vào taskflow_user_dobs
-    if (editDob.trim()) {
-      try {
-        const dStr = localStorage.getItem("taskflow_user_dobs");
-        const dobMap = dStr ? JSON.parse(dStr) : {};
-        dobMap[editingMember.email.toLowerCase()] = {
-          dob: editDob.trim(),
-          isLocked: true,
-        };
-        localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
-      } catch {}
-    }
-
-    // Đồng bộ vào taskflow_users trong localStorage
+    // 2. Mở khóa địa chỉ trong taskflow_user_addresses
     try {
-      const usersStr = localStorage.getItem("taskflow_users");
-      let users = [];
-      if (usersStr) {
-        try { users = JSON.parse(usersStr); } catch {}
-      }
-      const userIdx = users.findIndex(
-        (u: { email: string }) => u.email.toLowerCase() === editingMember.email.toLowerCase()
-      );
-      if (userIdx !== -1) {
-        users[userIdx].fullName = trimmedName;
-        users[userIdx].email = trimmedEmail;
-        users[userIdx].phone = editPhone.trim();
-        users[userIdx].dob = editDob.trim();
-        users[userIdx].isDobLocked = true;
-        users[userIdx].role = finalRole;
+      const aStr = localStorage.getItem("taskflow_user_addresses");
+      const addrMap = aStr ? JSON.parse(aStr) : {};
+      if (addrMap[emailLower]) {
+        addrMap[emailLower].isLocked = false;
       } else {
-        users.push({
-          fullName: trimmedName,
-          email: trimmedEmail,
-          phone: editPhone.trim(),
-          dob: editDob.trim(),
-          isDobLocked: true,
-          role: finalRole,
-          createdAt: new Date().toISOString(),
-        });
+        addrMap[emailLower] = { address: member.address || "", isLocked: false };
       }
-      localStorage.setItem("taskflow_users", JSON.stringify(users));
+      localStorage.setItem("taskflow_user_addresses", JSON.stringify(addrMap));
+    } catch {}
 
-      // Nếu chỉnh sửa tài khoản đang đăng nhập, cập nhật taskflow_current_user
-      const curUserStr = localStorage.getItem("taskflow_current_user");
-      if (curUserStr) {
-        const cur = JSON.parse(curUserStr);
-        if (cur.email.toLowerCase() === editingMember.email.toLowerCase()) {
-          cur.fullName = trimmedName;
-          cur.email = trimmedEmail;
-          cur.phone = editPhone.trim();
-          cur.dob = editDob.trim();
-          cur.isDobLocked = true;
-          cur.role = finalRole;
-          localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
-          window.dispatchEvent(new Event("taskflow_profile_updated"));
+    // 3. Cập nhật taskflow_users
+    try {
+      const uStr = localStorage.getItem("taskflow_users");
+      if (uStr) {
+        const users = JSON.parse(uStr);
+        const uIdx = users.findIndex(
+          (u: { email: string }) => u.email.toLowerCase() === emailLower
+        );
+        if (uIdx !== -1) {
+          users[uIdx].isDobLocked = false;
+          users[uIdx].isAddressLocked = false;
+          localStorage.setItem("taskflow_users", JSON.stringify(users));
         }
       }
     } catch {}
 
-    setEditingMember(null);
-    setToast(`✓ Đã cập nhật thông tin thành viên "${trimmedName}" thành công!`);
+    // 4. Cập nhật taskflow_members_list
+    const updated = membersList.map((m) =>
+      m.email.toLowerCase() === emailLower
+        ? { ...m, isDobLocked: false, isAddressLocked: false }
+        : m
+    );
+    updateAndPersistMembers(updated);
+
+    // 5. Cập nhật taskflow_current_user nếu trùng email
+    try {
+      const curUserStr = localStorage.getItem("taskflow_current_user");
+      if (curUserStr) {
+        const cur = JSON.parse(curUserStr);
+        if (cur.email && cur.email.toLowerCase() === emailLower) {
+          cur.isDobLocked = false;
+          cur.isAddressLocked = false;
+          localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
+        }
+      }
+    } catch {}
+
+    if (viewingMember && viewingMember.email.toLowerCase() === emailLower) {
+      setViewingMember((prev) =>
+        prev ? { ...prev, isDobLocked: false, isAddressLocked: false } : null
+      );
+    }
+
+    // Phát event đồng bộ
+    window.dispatchEvent(new Event("taskflow_profile_updated"));
+    window.dispatchEvent(new Event("taskflow_members_updated"));
+
+    setActiveMenuEmail(null);
+    setToast(`🔓 Đã mở khóa Ngày sinh & Địa chỉ cho "${member.name}"! Thành viên có thể cập nhật lại trên trang hồ sơ.`);
+  };
+
+  // Khóa lại hồ sơ
+  const handleLockMemberProfile = (member: MemberItem) => {
+    const emailLower = member.email.toLowerCase();
+
+    try {
+      const dStr = localStorage.getItem("taskflow_user_dobs");
+      const dobMap = dStr ? JSON.parse(dStr) : {};
+      if (dobMap[emailLower]) {
+        dobMap[emailLower].isLocked = true;
+        localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
+      }
+    } catch {}
+
+    try {
+      const aStr = localStorage.getItem("taskflow_user_addresses");
+      const addrMap = aStr ? JSON.parse(aStr) : {};
+      if (addrMap[emailLower]) {
+        addrMap[emailLower].isLocked = true;
+        localStorage.setItem("taskflow_user_addresses", JSON.stringify(addrMap));
+      }
+    } catch {}
+
+    try {
+      const uStr = localStorage.getItem("taskflow_users");
+      if (uStr) {
+        const users = JSON.parse(uStr);
+        const uIdx = users.findIndex(
+          (u: { email: string }) => u.email.toLowerCase() === emailLower
+        );
+        if (uIdx !== -1) {
+          users[uIdx].isDobLocked = true;
+          users[uIdx].isAddressLocked = true;
+          localStorage.setItem("taskflow_users", JSON.stringify(users));
+        }
+      }
+    } catch {}
+
+    const updated = membersList.map((m) =>
+      m.email.toLowerCase() === emailLower
+        ? { ...m, isDobLocked: true, isAddressLocked: true }
+        : m
+    );
+    updateAndPersistMembers(updated);
+
+    try {
+      const curUserStr = localStorage.getItem("taskflow_current_user");
+      if (curUserStr) {
+        const cur = JSON.parse(curUserStr);
+        if (cur.email && cur.email.toLowerCase() === emailLower) {
+          cur.isDobLocked = true;
+          cur.isAddressLocked = true;
+          localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
+        }
+      }
+    } catch {}
+
+    if (viewingMember && viewingMember.email.toLowerCase() === emailLower) {
+      setViewingMember((prev) =>
+        prev ? { ...prev, isDobLocked: true, isAddressLocked: true } : null
+      );
+    }
+
+    window.dispatchEvent(new Event("taskflow_profile_updated"));
+    window.dispatchEvent(new Event("taskflow_members_updated"));
+
+    setActiveMenuEmail(null);
+    setToast(`🔒 Đã khóa Ngày sinh & Địa chỉ cho "${member.name}".`);
   };
 
   // Mở modal Đặt lại mật khẩu
@@ -900,14 +981,25 @@ export default function ThanhVien() {
                                   Tùy chọn quản lý
                                 </div>
 
-                                {/* 1. Sửa thông tin */}
+                                {/* 1. Xem thông tin (Read-only) */}
                                 <button
                                   type="button"
-                                  onClick={() => handleStartEdit(m)}
+                                  onClick={() => handleStartView(m)}
                                   className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-slate-700 hover:bg-indigo-50 hover:text-main transition text-left cursor-pointer"
                                 >
-                                  <LuPencil className="text-main" size={15} />
-                                  <span>Chỉnh sửa thông tin</span>
+                                  <LuEye className="text-main" size={15} />
+                                  <span>Xem thông tin</span>
+                                </button>
+
+                                {/* 2. Mở khóa hồ sơ (Mở chặn Ngày sinh & Địa chỉ) */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleUnlockMemberProfile(m)}
+                                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-emerald-700 hover:bg-emerald-50 transition text-left cursor-pointer"
+                                  title="Mở khóa để thành viên tự cập nhật lại Ngày sinh & Địa chỉ"
+                                >
+                                  <LuLockOpen className="text-emerald-600" size={15} />
+                                  <span>Mở khóa hồ sơ</span>
                                 </button>
 
                                 {/* 2. Đặt lại mật khẩu */}
@@ -1108,147 +1200,207 @@ export default function ThanhVien() {
         )}
 
       {/* ============================================================ */}
-      {/* 2. MODAL: CHỈNH SỬA THÔNG TIN THÀNH VIÊN                     */}
+      {/* 2. MODAL: XEM THÔNG TIN THÀNH VIÊN & MỞ KHÓA HỒ SƠ           */}
       {/* ============================================================ */}
-      {editingMember &&
+      {viewingMember &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-            <div className="w-full max-w-[520px] rounded-[20px] bg-white p-[28px] shadow-2xl border border-slate-100">
+            <div className="w-full max-w-[560px] rounded-[24px] bg-white p-[28px] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2.5 rounded-xl bg-indigo-50 text-main">
-                    <LuPencil size={20} />
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-indigo-50 text-main">
+                    <LuEye size={22} />
                   </div>
                   <div>
-                    <h3 className="text-[20px] font-bold text-slate-800">Chỉnh sửa thành viên</h3>
+                    <h3 className="text-[20px] font-bold text-slate-800">
+                      Chi tiết thông tin thành viên
+                    </h3>
                     <p className="text-[12.5px] text-slate-500">
-                      Cập nhật họ tên, địa chỉ email và phân quyền hệ thống.
+                      Xem hồ sơ nhân sự. Admin không tự ý sửa đổi thông tin người dùng mà có quyền cấp phép mở khóa chặn.
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
-                  onClick={() => setEditingMember(null)}
+                  onClick={() => setViewingMember(null)}
                 >
                   <IoClose size={22} />
                 </button>
               </div>
 
-              {/* Lỗi cảnh báo */}
-              {editError && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium">
-                  ⚠️ {editError}
+              {/* Thông tin đại diện thành viên */}
+              <div className="mt-5 p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-indigo-50/40 border border-slate-200/70 flex items-center gap-4">
+                <div
+                  className={`h-14 w-14 rounded-2xl ${viewingMember.color} font-bold text-lg grid place-items-center shadow-xs shrink-0`}
+                >
+                  {viewingMember.initials}
                 </div>
-              )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-slate-800 text-[16px] truncate">
+                      {viewingMember.name}
+                    </h4>
+                    {viewingMember.admin ? (
+                      <span className="text-[11px] font-semibold text-main bg-indigo-100/70 px-2 py-0.5 rounded-full border border-indigo-200">
+                        Quản trị viên
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-full">
+                        Thành viên
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-slate-500 text-[13px] truncate mt-0.5 font-mono">
+                    {viewingMember.email}
+                  </p>
+                </div>
+              </div>
 
-              <form onSubmit={handleSaveEdit} className="mt-[20px] flex flex-col gap-[16px]">
+              {/* Danh sách thông tin hồ sơ (Read-only) */}
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Họ và tên */}
-                <div className="flex w-full flex-col gap-[6px]">
-                  <label className="text-[13px] font-semibold text-slate-700">Họ và tên *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="rounded-[10px] border border-slate-200 px-[12px] py-[10px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main"
-                  />
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11.5px] font-semibold uppercase tracking-wider">
+                    <LuUser size={14} className="text-main" />
+                    <span>Họ và tên</span>
+                  </div>
+                  <div className="mt-1 font-semibold text-slate-800 text-[14px]">
+                    {viewingMember.name}
+                  </div>
                 </div>
 
                 {/* Email */}
-                <div className="flex w-full flex-col gap-[6px]">
-                  <label className="text-[13px] font-semibold text-slate-700">Địa chỉ Email *</label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      required
-                      value={editEmail}
-                      onChange={(e) => setEditEmail(e.target.value)}
-                      className="w-full rounded-[10px] border border-slate-200 py-[10px] pl-[12px] pr-[40px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main"
-                    />
-                    <IoMailOutline className="absolute right-[12px] top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11.5px] font-semibold uppercase tracking-wider">
+                    <IoMailOutline size={14} className="text-main" />
+                    <span>Địa chỉ Email</span>
+                  </div>
+                  <div className="mt-1 font-medium text-slate-800 text-[13.5px] truncate font-mono">
+                    {viewingMember.email}
                   </div>
                 </div>
 
-                {/* Số điện thoại (Chỉ Admin mới có quyền sửa) */}
-                <div className="flex w-full flex-col gap-[6px]">
+                {/* Số điện thoại */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between">
-                    <label className="text-[13px] font-semibold text-slate-700">
-                      Số điện thoại liên hệ
-                    </label>
-                    <span className="text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold border border-indigo-200">
-                      Chỉ Admin được sửa
-                    </span>
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[11.5px] font-semibold uppercase tracking-wider">
+                      <LuPhone size={14} className="text-main" />
+                      <span>Số điện thoại</span>
+                    </div>
+                    {viewingMember.phone ? (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        🔒 Đã khóa
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-slate-400">Chưa nhập</span>
+                    )}
                   </div>
-                  <input
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    placeholder="Ví dụ: 0912345678"
-                    className="rounded-[10px] border border-slate-200 px-[12px] py-[10px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main font-mono"
-                  />
-                  <p className="text-[11px] text-slate-400">
-                    🔒 Thành viên chỉ được nhập số điện thoại một lần. Chỉ Admin mới có quyền cập nhật lại tại đây.
-                  </p>
+                  <div className="mt-1 font-medium text-slate-800 text-[13.5px] font-mono">
+                    {viewingMember.phone || "—"}
+                  </div>
                 </div>
 
-                {/* Ngày / tháng / năm sinh (Chỉ Admin mới có quyền sửa) */}
-                <div className="flex w-full flex-col gap-[6px]">
+                {/* Ngày sinh */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between">
-                    <label className="text-[13px] font-semibold text-slate-700">
-                      Ngày / tháng / năm sinh
-                    </label>
-                    <span className="text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold border border-indigo-200">
-                      Chỉ Admin được sửa
-                    </span>
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[11.5px] font-semibold uppercase tracking-wider">
+                      <LuCalendar size={14} className="text-main" />
+                      <span>Ngày sinh</span>
+                    </div>
+                    {viewingMember.isDobLocked ? (
+                      <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                        🔒 Bị khóa
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        🔓 Đang mở
+                      </span>
+                    )}
                   </div>
-                  <input
-                    type="text"
-                    value={editDob}
-                    onChange={(e) => setEditDob(e.target.value)}
-                    placeholder="Ví dụ: 27/04/2005"
-                    className="rounded-[10px] border border-slate-200 px-[12px] py-[10px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main font-mono"
-                  />
-                  <p className="text-[11px] text-slate-400">
-                    🔒 Thành viên chỉ được đặt ngày sinh 1 lần và bị khóa. Chỉ Quản trị viên (Admin) mới có quyền cập nhật lại tại đây.
-                  </p>
+                  <div className="mt-1 font-medium text-slate-800 text-[13.5px] font-mono">
+                    {viewingMember.dob || "Chưa thiết lập"}
+                  </div>
                 </div>
 
-                {/* Vai trò */}
-                <div className="flex w-full flex-col gap-[6px]">
-                  <label className="text-[13px] font-semibold text-slate-700">Vai trò phân quyền</label>
-                  {editingMember.email.toLowerCase() === "nam.nguyen@taskflow.vn" ? (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/50 text-main font-semibold text-[13px]">
-                      <LuShieldCheck size={16} />
-                      <span>👑 Quản trị viên (Admin duy nhất của hệ thống)</span>
+                {/* Địa chỉ thường trú */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-slate-400 text-[11.5px] font-semibold uppercase tracking-wider">
+                      <LuMapPin size={14} className="text-main" />
+                      <span>Địa chỉ thường trú / Khu vực</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 font-semibold text-[13px]">
-                      <LuShieldCheck size={16} />
-                      <span>👤 Thành viên (User) - Không thể nâng cấp vì hệ thống chỉ có 1 Admin</span>
-                    </div>
-                  )}
+                    {viewingMember.isAddressLocked ? (
+                      <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                        🔒 Bị khóa
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        🔓 Đang mở
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 font-medium text-slate-800 text-[13.5px] leading-relaxed">
+                    {viewingMember.address || "Chưa thiết lập"}
+                  </div>
                 </div>
+              </div>
 
-                {/* Buttons */}
-                <div className="flex justify-end gap-[10px] border-t border-slate-100 pt-[18px] mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingMember(null)}
-                    className="cursor-pointer rounded-[10px] border border-slate-200 px-[16px] py-[9px] text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition"
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    className="cursor-pointer rounded-[10px] bg-main px-[18px] py-[9px] text-[13px] font-semibold text-white hover:bg-main/90 transition shadow-sm flex items-center gap-1.5"
-                  >
-                    <LuCheck size={16} />
-                    Lưu thay đổi
-                  </button>
+              {/* KHỐI CẤP QUYỀN MỞ KHÓA CHẶN (UNLOCK) CHO NGƯỜI DÙNG */}
+              <div className="mt-5 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/40">
+                <div className="flex items-start gap-2.5">
+                  <div className="p-2 rounded-xl bg-white text-main shadow-xs shrink-0 mt-0.5">
+                    <LuLockOpen size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-bold text-[14px] text-slate-800">
+                      Quản lý mở khóa hồ sơ (Ngày sinh & Địa chỉ)
+                    </h5>
+                    <p className="text-[12px] text-slate-500 mt-1 leading-relaxed">
+                      Theo chính sách, Ngày sinh và Địa chỉ chỉ được đặt 1 lần và khóa vĩnh viễn. Khi thành viên nhập sai và yêu cầu hỗ trợ, Quản trị viên bấm nút dưới đây để <strong>Mở khóa chặn</strong> cho thành viên tự chỉnh sửa lại trên form cá nhân.
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      {viewingMember.isDobLocked || viewingMember.isAddressLocked ? (
+                        <button
+                          type="button"
+                          onClick={() => handleUnlockMemberProfile(viewingMember)}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[13px] shadow-sm transition cursor-pointer"
+                        >
+                          <LuLockOpen size={16} />
+                          <span>Mở khóa Ngày sinh & Địa chỉ</span>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-700 font-semibold text-[12.5px] bg-emerald-100/70 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                            <LuCheck size={15} />
+                            Hồ sơ đang mở khóa (Thành viên có thể sửa lại 1 lần)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleLockMemberProfile(viewingMember)}
+                            className="text-[12px] font-semibold text-slate-600 hover:text-slate-800 underline ml-2 cursor-pointer"
+                          >
+                            Khóa lại ngay
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </form>
+              </div>
+
+              {/* Nút Đóng Modal */}
+              <div className="flex justify-end border-t border-slate-100 pt-4 mt-5">
+                <button
+                  type="button"
+                  onClick={() => setViewingMember(null)}
+                  className="cursor-pointer rounded-xl bg-slate-100 hover:bg-slate-200 px-6 py-2.5 text-[13px] font-bold text-slate-700 transition"
+                >
+                  Đóng
+                </button>
+              </div>
             </div>
           </div>,
           document.body
