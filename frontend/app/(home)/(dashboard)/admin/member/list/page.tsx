@@ -33,6 +33,8 @@ interface MemberItem {
   joined: string;
   color: string;
   phone?: string;
+  password?: string;
+  mustChangePassword?: boolean;
 }
 
 const AVATAR_COLORS = [
@@ -325,6 +327,8 @@ export default function ThanhVien() {
       tasks: 0,
       joined: `Tham gia ${new Date().toLocaleDateString("vi-VN")}`,
       color: AVATAR_COLORS[membersList.length % AVATAR_COLORS.length],
+      password: newPassword,
+      mustChangePassword: true,
     };
 
     const updated = [newMemberObj, ...membersList];
@@ -333,7 +337,15 @@ export default function ThanhVien() {
     // Lưu vào taskflow_users để tài khoản mới này có thể đăng nhập ngay lập tức
     try {
       const usersStr = localStorage.getItem("taskflow_users");
-      const users = usersStr ? JSON.parse(usersStr) : [];
+      let users: any[] = [];
+      if (usersStr) {
+        try {
+          const parsed = JSON.parse(usersStr);
+          if (Array.isArray(parsed)) users = parsed;
+        } catch {}
+      }
+      // Loại bỏ bản ghi cũ nếu cùng email
+      users = users.filter((u: any) => u.email?.toLowerCase().trim() !== trimmedEmail);
       users.push({
         fullName: trimmedName,
         email: trimmedEmail,

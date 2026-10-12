@@ -122,11 +122,7 @@ export default function LoginPage() {
       return;
     }
 
-    // Lấy danh sách tài khoản từ localStorage
-    const storedUsersStr = localStorage.getItem("taskflow_users");
-    const registeredUsers: UserAccount[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
-
-    // Tài khoản mặc định demo hệ thống (Chỉ 1 Quản trị viên duy nhất)
+    // 1. Tài khoản mặc định demo hệ thống (Chỉ 1 Quản trị viên duy nhất)
     const defaultAccounts: UserAccount[] = [
       {
         fullName: "Lê Trần Hoàng Nam",
@@ -142,14 +138,47 @@ export default function LoginPage() {
       },
     ];
 
-    // Gộp và ưu tiên bản ghi mới nhất trong taskflow_users
     const allUsersMap: Record<string, UserAccount> = {};
     defaultAccounts.forEach((u) => {
-      allUsersMap[u.email.toLowerCase()] = u;
+      allUsersMap[u.email.toLowerCase().trim()] = u;
     });
-    registeredUsers.forEach((u) => {
-      allUsersMap[u.email.toLowerCase()] = u;
-    });
+
+    // 2. Đọc từ danh sách thành viên taskflow_members_list
+    const membersListStr = localStorage.getItem("taskflow_members_list");
+    if (membersListStr) {
+      try {
+        const members = JSON.parse(membersListStr);
+        if (Array.isArray(members)) {
+          members.forEach((m: any) => {
+            if (m && m.email) {
+              const emailKey = m.email.toLowerCase().trim();
+              allUsersMap[emailKey] = {
+                fullName: m.name,
+                email: m.email,
+                password: m.password || "Pass@123",
+                role: m.admin ? "admin" : "user",
+                mustChangePassword: m.mustChangePassword ?? false,
+              };
+            }
+          });
+        }
+      } catch {}
+    }
+
+    // 3. Đọc từ taskflow_users (Ưu tiên cao nhất)
+    const storedUsersStr = localStorage.getItem("taskflow_users");
+    if (storedUsersStr) {
+      try {
+        const registeredUsers = JSON.parse(storedUsersStr);
+        if (Array.isArray(registeredUsers)) {
+          registeredUsers.forEach((u: any) => {
+            if (u && u.email) {
+              allUsersMap[u.email.toLowerCase().trim()] = u;
+            }
+          });
+        }
+      } catch {}
+    }
 
     const user = allUsersMap[trimmedEmail];
 
