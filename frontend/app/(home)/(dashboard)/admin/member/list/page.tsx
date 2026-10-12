@@ -110,6 +110,18 @@ const getInitials = (name: string) => {
   return lastName ? lastName.charAt(0).toUpperCase() : "K";
 };
 
+// Hàm tự động tạo địa chỉ Gmail từ Họ và tên (chuyển tiếng Việt thành không dấu + @gmail.com)
+const generateEmailFromName = (name: string): string => {
+  if (!name.trim()) return "";
+  const normalized = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[đĐ]/g, "d")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return normalized ? `${normalized}@gmail.com` : "";
+};
+
 export default function ThanhVien() {
   const [membersList, setMembersList] = useState<MemberItem[]>(defaultMembers);
   const [searchTerm, setSearchTerm] = useState("");
@@ -931,23 +943,34 @@ export default function ThanhVien() {
                     type="text"
                     required
                     value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Ví dụ: Nguyễn Khánh Linh"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewName(val);
+                      // Tự động chuyển đổi họ tên thành email @gmail.com
+                      const autoEmail = generateEmailFromName(val);
+                      setNewEmail(autoEmail);
+                    }}
+                    placeholder="Ví dụ: Nguyễn Văn A"
                     className="rounded-[10px] border border-slate-200 px-[12px] py-[10px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main"
                   />
                 </div>
 
                 {/* Email */}
                 <div className="flex w-full flex-col gap-[6px]">
-                  <label className="text-[13px] font-semibold text-slate-700">Email *</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-semibold text-slate-700">Email *</label>
+                    <span className="text-[11px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200 flex items-center gap-1">
+                      <span>⚡</span> Tự động tạo @gmail.com
+                    </span>
+                  </div>
                   <div className="relative">
                     <input
                       type="email"
                       required
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="khanhlinh.nguyen@taskflow.vn"
-                      className="w-full rounded-[10px] border border-slate-200 py-[10px] pl-[12px] pr-[40px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main"
+                      placeholder="nguyenvana@gmail.com"
+                      className="w-full rounded-[10px] border border-slate-200 py-[10px] pl-[12px] pr-[40px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main font-mono"
                     />
                     <IoMailOutline className="absolute right-[12px] top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400" />
                   </div>
