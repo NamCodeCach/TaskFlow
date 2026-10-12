@@ -225,26 +225,22 @@ export default function ThanhVien() {
     if (usersStr) {
       try {
         const registered = JSON.parse(usersStr);
-        registered.forEach(
-          (u: {
-            fullName: string;
-            email: string;
-            role?: string;
-            phone?: string;
-            dob?: string;
-            isDobLocked?: boolean;
-            address?: string;
-            isAddressLocked?: boolean;
-          }) => {
-            const emailLower = u.email.toLowerCase();
+        if (Array.isArray(registered)) {
+          registered.forEach((u: any) => {
+            if (!u || !u.email) return;
+            const emailLower = u.email.trim().toLowerCase();
             const memberIdx = baseList.findIndex(
-              (m) => m.email.toLowerCase() === emailLower
+              (m) => m.email && m.email.trim().toLowerCase() === emailLower
             );
             const userPhone = phoneMap[emailLower] || u.phone || "";
             const userDob = dobMap[emailLower]?.dob || u.dob || "";
-            const isDobLocked = dobMap[emailLower]?.isLocked ?? u.isDobLocked ?? false;
+            const isDobLocked = typeof dobMap[emailLower]?.isLocked === "boolean"
+              ? dobMap[emailLower].isLocked
+              : (typeof u.isDobLocked === "boolean" ? u.isDobLocked : false);
             const userAddress = addrMap[emailLower]?.address || u.address || "";
-            const isAddressLocked = addrMap[emailLower]?.isLocked ?? u.isAddressLocked ?? false;
+            const isAddressLocked = typeof addrMap[emailLower]?.isLocked === "boolean"
+              ? addrMap[emailLower].isLocked
+              : (typeof u.isAddressLocked === "boolean" ? u.isAddressLocked : false);
 
             if (memberIdx !== -1) {
               if (userPhone) baseList[memberIdx].phone = userPhone;
@@ -255,8 +251,8 @@ export default function ThanhVien() {
               if (u.fullName) baseList[memberIdx].name = u.fullName;
             } else {
               baseList.push({
-                name: u.fullName,
-                initials: getInitials(u.fullName),
+                name: u.fullName || u.email,
+                initials: getInitials(u.fullName || u.email),
                 email: u.email,
                 phone: userPhone,
                 dob: userDob,
@@ -269,19 +265,23 @@ export default function ThanhVien() {
                 color: AVATAR_COLORS[baseList.length % AVATAR_COLORS.length],
               });
             }
-          }
-        );
+          });
+        }
       } catch {}
     }
 
     // Đảm bảo mọi thành viên trong baseList đều lấy dữ liệu mới nhất
     baseList = baseList.map((m) => {
-      const emailLower = m.email.toLowerCase();
+      const emailLower = (m.email || "").trim().toLowerCase();
       const ph = phoneMap[emailLower] || m.phone || "";
       const db = dobMap[emailLower]?.dob || m.dob || "";
-      const dbLock = dobMap[emailLower]?.isLocked ?? m.isDobLocked ?? false;
+      const dbLock = typeof dobMap[emailLower]?.isLocked === "boolean"
+        ? dobMap[emailLower].isLocked
+        : (m.isDobLocked ?? false);
       const ad = addrMap[emailLower]?.address || m.address || "";
-      const adLock = addrMap[emailLower]?.isLocked ?? m.isAddressLocked ?? false;
+      const adLock = typeof addrMap[emailLower]?.isLocked === "boolean"
+        ? addrMap[emailLower].isLocked
+        : (m.isAddressLocked ?? false);
       return {
         ...m,
         phone: ph,
@@ -431,7 +431,7 @@ export default function ThanhVien() {
 
   // Mở modal Xem thông tin thành viên (Read-only)
   const handleStartView = (member: MemberItem) => {
-    const emailLower = member.email.toLowerCase();
+    const emailLower = (member.email || "").trim().toLowerCase();
     let currentPhone = member.phone || "";
     let currentDob = member.dob || "";
     let isDobLocked = member.isDobLocked ?? false;
@@ -452,7 +452,9 @@ export default function ThanhVien() {
         const dMap = JSON.parse(dStr);
         if (dMap[emailLower]) {
           currentDob = dMap[emailLower].dob || currentDob;
-          isDobLocked = dMap[emailLower].isLocked ?? isDobLocked;
+          if (typeof dMap[emailLower].isLocked === "boolean") {
+            isDobLocked = dMap[emailLower].isLocked;
+          }
         }
       }
     } catch {}
@@ -463,7 +465,9 @@ export default function ThanhVien() {
         const aMap = JSON.parse(aStr);
         if (aMap[emailLower]) {
           currentAddress = aMap[emailLower].address || currentAddress;
-          isAddressLocked = aMap[emailLower].isLocked ?? isAddressLocked;
+          if (typeof aMap[emailLower].isLocked === "boolean") {
+            isAddressLocked = aMap[emailLower].isLocked;
+          }
         }
       }
     } catch {}
@@ -472,13 +476,15 @@ export default function ThanhVien() {
       const uStr = localStorage.getItem("taskflow_users");
       if (uStr) {
         const users = JSON.parse(uStr);
-        const u = users.find((x: { email: string }) => x.email.toLowerCase() === emailLower);
-        if (u) {
-          if (!currentPhone && u.phone) currentPhone = u.phone;
-          if (!currentDob && u.dob) currentDob = u.dob;
-          if (u.isDobLocked !== undefined) isDobLocked = u.isDobLocked;
-          if (!currentAddress && u.address) currentAddress = u.address;
-          if (u.isAddressLocked !== undefined) isAddressLocked = u.isAddressLocked;
+        if (Array.isArray(users)) {
+          const u = users.find((x: any) => x && x.email && x.email.trim().toLowerCase() === emailLower);
+          if (u) {
+            if (!currentPhone && u.phone) currentPhone = u.phone;
+            if (!currentDob && u.dob) currentDob = u.dob;
+            if (typeof u.isDobLocked === "boolean") isDobLocked = u.isDobLocked;
+            if (!currentAddress && u.address) currentAddress = u.address;
+            if (typeof u.isAddressLocked === "boolean") isAddressLocked = u.isAddressLocked;
+          }
         }
       }
     } catch {}
@@ -496,7 +502,7 @@ export default function ThanhVien() {
 
   // Admin mở khóa hồ sơ (Ngày sinh & Địa chỉ) cho thành viên
   const handleUnlockMemberProfile = (member: MemberItem) => {
-    const emailLower = member.email.toLowerCase();
+    const emailLower = (member.email || "").trim().toLowerCase();
 
     // 1. Mở khóa ngày sinh trong taskflow_user_dobs
     try {
@@ -527,20 +533,22 @@ export default function ThanhVien() {
       const uStr = localStorage.getItem("taskflow_users");
       if (uStr) {
         const users = JSON.parse(uStr);
-        const uIdx = users.findIndex(
-          (u: { email: string }) => u.email.toLowerCase() === emailLower
-        );
-        if (uIdx !== -1) {
-          users[uIdx].isDobLocked = false;
-          users[uIdx].isAddressLocked = false;
-          localStorage.setItem("taskflow_users", JSON.stringify(users));
+        if (Array.isArray(users)) {
+          const uIdx = users.findIndex(
+            (u: any) => u && u.email && u.email.trim().toLowerCase() === emailLower
+          );
+          if (uIdx !== -1) {
+            users[uIdx].isDobLocked = false;
+            users[uIdx].isAddressLocked = false;
+            localStorage.setItem("taskflow_users", JSON.stringify(users));
+          }
         }
       }
     } catch {}
 
     // 4. Cập nhật taskflow_members_list
     const updated = membersList.map((m) =>
-      m.email.toLowerCase() === emailLower
+      m.email && m.email.trim().toLowerCase() === emailLower
         ? { ...m, isDobLocked: false, isAddressLocked: false }
         : m
     );
@@ -551,7 +559,7 @@ export default function ThanhVien() {
       const curUserStr = localStorage.getItem("taskflow_current_user");
       if (curUserStr) {
         const cur = JSON.parse(curUserStr);
-        if (cur.email && cur.email.toLowerCase() === emailLower) {
+        if (cur.email && cur.email.trim().toLowerCase() === emailLower) {
           cur.isDobLocked = false;
           cur.isAddressLocked = false;
           localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
@@ -559,7 +567,7 @@ export default function ThanhVien() {
       }
     } catch {}
 
-    if (viewingMember && viewingMember.email.toLowerCase() === emailLower) {
+    if (viewingMember && viewingMember.email.trim().toLowerCase() === emailLower) {
       setViewingMember((prev) =>
         prev ? { ...prev, isDobLocked: false, isAddressLocked: false } : null
       );
@@ -575,15 +583,17 @@ export default function ThanhVien() {
 
   // Khóa lại hồ sơ
   const handleLockMemberProfile = (member: MemberItem) => {
-    const emailLower = member.email.toLowerCase();
+    const emailLower = (member.email || "").trim().toLowerCase();
 
     try {
       const dStr = localStorage.getItem("taskflow_user_dobs");
       const dobMap = dStr ? JSON.parse(dStr) : {};
       if (dobMap[emailLower]) {
         dobMap[emailLower].isLocked = true;
-        localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
+      } else {
+        dobMap[emailLower] = { dob: member.dob || "", isLocked: true };
       }
+      localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
     } catch {}
 
     try {
@@ -591,27 +601,31 @@ export default function ThanhVien() {
       const addrMap = aStr ? JSON.parse(aStr) : {};
       if (addrMap[emailLower]) {
         addrMap[emailLower].isLocked = true;
-        localStorage.setItem("taskflow_user_addresses", JSON.stringify(addrMap));
+      } else {
+        addrMap[emailLower] = { address: member.address || "", isLocked: true };
       }
+      localStorage.setItem("taskflow_user_addresses", JSON.stringify(addrMap));
     } catch {}
 
     try {
       const uStr = localStorage.getItem("taskflow_users");
       if (uStr) {
         const users = JSON.parse(uStr);
-        const uIdx = users.findIndex(
-          (u: { email: string }) => u.email.toLowerCase() === emailLower
-        );
-        if (uIdx !== -1) {
-          users[uIdx].isDobLocked = true;
-          users[uIdx].isAddressLocked = true;
-          localStorage.setItem("taskflow_users", JSON.stringify(users));
+        if (Array.isArray(users)) {
+          const uIdx = users.findIndex(
+            (u: any) => u && u.email && u.email.trim().toLowerCase() === emailLower
+          );
+          if (uIdx !== -1) {
+            users[uIdx].isDobLocked = true;
+            users[uIdx].isAddressLocked = true;
+            localStorage.setItem("taskflow_users", JSON.stringify(users));
+          }
         }
       }
     } catch {}
 
     const updated = membersList.map((m) =>
-      m.email.toLowerCase() === emailLower
+      m.email && m.email.trim().toLowerCase() === emailLower
         ? { ...m, isDobLocked: true, isAddressLocked: true }
         : m
     );
@@ -621,7 +635,7 @@ export default function ThanhVien() {
       const curUserStr = localStorage.getItem("taskflow_current_user");
       if (curUserStr) {
         const cur = JSON.parse(curUserStr);
-        if (cur.email && cur.email.toLowerCase() === emailLower) {
+        if (cur.email && cur.email.trim().toLowerCase() === emailLower) {
           cur.isDobLocked = true;
           cur.isAddressLocked = true;
           localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
@@ -629,7 +643,7 @@ export default function ThanhVien() {
       }
     } catch {}
 
-    if (viewingMember && viewingMember.email.toLowerCase() === emailLower) {
+    if (viewingMember && viewingMember.email.trim().toLowerCase() === emailLower) {
       setViewingMember((prev) =>
         prev ? { ...prev, isDobLocked: true, isAddressLocked: true } : null
       );

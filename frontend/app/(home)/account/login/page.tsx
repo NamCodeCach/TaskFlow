@@ -235,12 +235,72 @@ export default function LoginPage() {
   // Hoàn tất lưu phiên đăng nhập và chuyển hướng
   const completeSuccessfulLogin = (user: UserAccount) => {
     const userRole = user.role || "user";
+    const emailKey = user.email.trim().toLowerCase();
+
+    let userDob = "";
+    let isDobLocked = false;
+    let userAddress = "";
+    let isAddressLocked = false;
+    let userPhone = "";
+
+    try {
+      const dStr = localStorage.getItem("taskflow_user_dobs");
+      if (dStr) {
+        const dMap = JSON.parse(dStr);
+        if (dMap[emailKey]) {
+          userDob = dMap[emailKey].dob || "";
+          isDobLocked = dMap[emailKey].isLocked ?? false;
+        }
+      }
+    } catch {}
+
+    try {
+      const aStr = localStorage.getItem("taskflow_user_addresses");
+      if (aStr) {
+        const aMap = JSON.parse(aStr);
+        if (aMap[emailKey]) {
+          userAddress = aMap[emailKey].address || "";
+          isAddressLocked = aMap[emailKey].isLocked ?? false;
+        }
+      }
+    } catch {}
+
+    try {
+      const pStr = localStorage.getItem("taskflow_user_phones");
+      if (pStr) {
+        const pMap = JSON.parse(pStr);
+        if (pMap[emailKey]) userPhone = pMap[emailKey];
+      }
+    } catch {}
+
+    try {
+      const uStr = localStorage.getItem("taskflow_users");
+      if (uStr) {
+        const uList = JSON.parse(uStr);
+        if (Array.isArray(uList)) {
+          const matched = uList.find((x: any) => x?.email && x.email.trim().toLowerCase() === emailKey);
+          if (matched) {
+            if (!userDob && matched.dob) userDob = matched.dob;
+            if (matched.isDobLocked !== undefined) isDobLocked = matched.isDobLocked;
+            if (!userAddress && matched.address) userAddress = matched.address;
+            if (matched.isAddressLocked !== undefined) isAddressLocked = matched.isAddressLocked;
+            if (!userPhone && matched.phone) userPhone = matched.phone;
+          }
+        }
+      }
+    } catch {}
+
     localStorage.setItem(
       "taskflow_current_user",
       JSON.stringify({
         fullName: user.fullName,
         email: user.email,
         role: userRole,
+        dob: userDob,
+        isDobLocked,
+        address: userAddress,
+        isAddressLocked,
+        phone: userPhone,
         loggedInAt: new Date().toISOString(),
       })
     );

@@ -219,66 +219,103 @@ export default function UserProfilePage() {
       } catch {}
     }
 
-    // Đọc từ điển ngày sinh taskflow_user_dobs
+    const emailKey = (baseUser.email || "").trim().toLowerCase();
+
+    // 1. Đọc từ điển ngày sinh taskflow_user_dobs
     try {
       const dStr = localStorage.getItem("taskflow_user_dobs");
       if (dStr) {
         const dobMap = JSON.parse(dStr);
-        if (dobMap[baseUser.email.toLowerCase()]) {
-          const entry = dobMap[baseUser.email.toLowerCase()];
-          baseUser.dob = entry.dob || baseUser.dob || "";
-          baseUser.isDobLocked = entry.isLocked ?? baseUser.isDobLocked;
+        if (dobMap[emailKey]) {
+          const entry = dobMap[emailKey];
+          if (entry.dob) baseUser.dob = entry.dob;
+          if (typeof entry.isLocked === "boolean") {
+            baseUser.isDobLocked = entry.isLocked;
+          }
         }
       }
     } catch {}
 
-    // Đọc từ điển địa chỉ taskflow_user_addresses
+    // 2. Đọc từ điển địa chỉ taskflow_user_addresses
     try {
       const aStr = localStorage.getItem("taskflow_user_addresses");
       if (aStr) {
         const addrMap = JSON.parse(aStr);
-        if (addrMap[baseUser.email.toLowerCase()]) {
-          const entry = addrMap[baseUser.email.toLowerCase()];
-          baseUser.address = entry.address || baseUser.address || "";
-          baseUser.isAddressLocked = entry.isLocked ?? baseUser.isAddressLocked;
+        if (addrMap[emailKey]) {
+          const entry = addrMap[emailKey];
+          if (entry.address) baseUser.address = entry.address;
+          if (typeof entry.isLocked === "boolean") {
+            baseUser.isAddressLocked = entry.isLocked;
+          }
         }
       }
     } catch {}
 
-    // Tìm thông tin chi tiết từ taskflow_users
+    // 3. Tìm thông tin chi tiết từ taskflow_users
     try {
       const usersStr = localStorage.getItem("taskflow_users");
       if (usersStr) {
         const users = JSON.parse(usersStr);
-        const matched = users.find(
-          (u: { email: string }) => u.email.toLowerCase() === baseUser.email.toLowerCase()
-        );
-        if (matched) {
-          baseUser = {
-            ...baseUser,
-            dob: matched.dob || baseUser.dob || "",
-            isDobLocked: matched.isDobLocked ?? baseUser.isDobLocked,
-            phone: matched.phone || baseUser.phone || "",
-            address: matched.address || baseUser.address || "",
-            isAddressLocked: matched.isAddressLocked ?? baseUser.isAddressLocked,
-            lastAvatarChangedDate: matched.lastAvatarChangedDate || baseUser.lastAvatarChangedDate,
-            lastNameChangedDate: matched.lastNameChangedDate || baseUser.lastNameChangedDate,
-            avatar: matched.avatar || baseUser.avatar,
-          };
+        if (Array.isArray(users)) {
+          const matched = users.find(
+            (u: any) => u && u.email && u.email.trim().toLowerCase() === emailKey
+          );
+          if (matched) {
+            if (matched.fullName) baseUser.fullName = matched.fullName;
+            if (matched.phone) baseUser.phone = matched.phone;
+            if (matched.dob) baseUser.dob = matched.dob;
+            if (typeof matched.isDobLocked === "boolean") {
+              baseUser.isDobLocked = matched.isDobLocked;
+            }
+            if (matched.address) baseUser.address = matched.address;
+            if (typeof matched.isAddressLocked === "boolean") {
+              baseUser.isAddressLocked = matched.isAddressLocked;
+            }
+            if (matched.lastAvatarChangedDate) baseUser.lastAvatarChangedDate = matched.lastAvatarChangedDate;
+            if (matched.lastNameChangedDate) baseUser.lastNameChangedDate = matched.lastNameChangedDate;
+            if (matched.avatar) baseUser.avatar = matched.avatar;
+          }
         }
       }
     } catch {}
 
-    // Đọc số điện thoại từ taskflow_user_phones
+    // 4. Tìm thông tin từ taskflow_members_list
+    try {
+      const membersStr = localStorage.getItem("taskflow_members_list");
+      if (membersStr) {
+        const members = JSON.parse(membersStr);
+        if (Array.isArray(members)) {
+          const matchedM = members.find(
+            (m: any) => m && m.email && m.email.trim().toLowerCase() === emailKey
+          );
+          if (matchedM) {
+            if (!baseUser.dob && matchedM.dob) baseUser.dob = matchedM.dob;
+            if (!baseUser.address && matchedM.address) baseUser.address = matchedM.address;
+            if (!baseUser.phone && matchedM.phone) baseUser.phone = matchedM.phone;
+            if (typeof matchedM.isDobLocked === "boolean" && baseUser.isDobLocked === undefined) {
+              baseUser.isDobLocked = matchedM.isDobLocked;
+            }
+            if (typeof matchedM.isAddressLocked === "boolean" && baseUser.isAddressLocked === undefined) {
+              baseUser.isAddressLocked = matchedM.isAddressLocked;
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 5. Đọc số điện thoại từ taskflow_user_phones
     try {
       const pStr = localStorage.getItem("taskflow_user_phones");
       if (pStr) {
         const phoneMap = JSON.parse(pStr);
-        if (phoneMap[baseUser.email.toLowerCase()]) {
-          baseUser.phone = phoneMap[baseUser.email.toLowerCase()];
+        if (phoneMap[emailKey]) {
+          baseUser.phone = phoneMap[emailKey];
         }
       }
     } catch {}
+
+    baseUser.isDobLocked = Boolean(baseUser.isDobLocked);
+    baseUser.isAddressLocked = Boolean(baseUser.isAddressLocked);
 
     setCurrentUser(baseUser);
     setNameInput(baseUser.fullName);
@@ -394,48 +431,40 @@ export default function UserProfilePage() {
       finalPhone = cleanPhone;
     }
 
-    // Kiểm tra Ngày / Tháng / Năm sinh nếu nhập lần đầu
+    // Kiểm tra Ngày / Tháng / Năm sinh nếu người dùng nhập hoặc đã có sẵn
     let finalDob = currentUser.dob || "";
-    let isDobNowLocked = currentUser.isDobLocked || false;
+    if (dayVal || monthVal || yearVal) {
+      const d = parseInt(dayVal, 10);
+      const m = parseInt(monthVal, 10);
+      const y = parseInt(yearVal, 10);
 
-    if (!isDobLockedForever) {
-      if (dayVal || monthVal || yearVal) {
-        const d = parseInt(dayVal, 10);
-        const m = parseInt(monthVal, 10);
-        const y = parseInt(yearVal, 10);
-
-        if (isNaN(d) || d < 1 || d > 31) {
-          setErrorMsg("Ngày sinh không hợp lệ (từ 01 đến 31)!");
-          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-          return;
-        }
-        if (isNaN(m) || m < 1 || m > 12) {
-          setErrorMsg("Tháng sinh không hợp lệ (từ 01 đến 12)!");
-          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-          return;
-        }
-        const currentYear = new Date().getFullYear();
-        if (isNaN(y) || y < 1920 || y > currentYear) {
-          setErrorMsg(`Năm sinh không hợp lệ (từ 1920 đến ${currentYear})!`);
-          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-          return;
-        }
-
-        finalDob = `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
-        isDobNowLocked = true; // Khóa vĩnh viễn sau lần lưu đầu tiên
+      if (isNaN(d) || d < 1 || d > 31) {
+        setErrorMsg("Ngày sinh không hợp lệ (từ 01 đến 31)!");
+        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       }
+      if (isNaN(m) || m < 1 || m > 12) {
+        setErrorMsg("Tháng sinh không hợp lệ (từ 01 đến 12)!");
+        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      const currentYear = new Date().getFullYear();
+      if (isNaN(y) || y < 1920 || y > currentYear) {
+        setErrorMsg(`Năm sinh không hợp lệ (từ 1920 đến ${currentYear})!`);
+        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
+      finalDob = `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
     }
 
-    // Kiểm tra Địa chỉ thường trú nếu nhập lần đầu hoặc khi được Admin mở khóa
-    let finalAddress = currentUser.address || "";
-    let isAddressNowLocked = currentUser.isAddressLocked || false;
+    // Khi người dùng bấm Xác nhận thay đổi: Nếu đã có Ngày sinh -> Khóa vĩnh viễn ngay lập tức
+    const isDobNowLocked = Boolean(finalDob);
 
-    if (!isAddressLockedForever) {
-      if (addressInput.trim()) {
-        finalAddress = addressInput.trim();
-        isAddressNowLocked = true; // Khóa vĩnh viễn sau khi lưu
-      }
-    }
+    // Kiểm tra Địa chỉ thường trú: Lấy địa chỉ vừa nhập hoặc địa chỉ đã lưu
+    const finalAddress = addressInput.trim() || currentUser.address || "";
+    // Khi người dùng bấm Xác nhận thay đổi: Nếu đã có Địa chỉ -> Khóa vĩnh viễn ngay lập tức
+    const isAddressNowLocked = Boolean(finalAddress.trim());
 
     // Kiểm tra xem có thay đổi Tên không
     const isNameChanged = trimmedName !== currentUser.fullName;
@@ -456,6 +485,8 @@ export default function UserProfilePage() {
     setIsSaving(true);
 
     try {
+      const emailKey = (currentUser.email || "").trim().toLowerCase();
+
       // Chuẩn bị dữ liệu cập nhật
       const updatedUser: UserData = {
         ...currentUser,
@@ -478,7 +509,7 @@ export default function UserProfilePage() {
         try {
           const dStr = localStorage.getItem("taskflow_user_dobs");
           const dobMap = dStr ? JSON.parse(dStr) : {};
-          dobMap[updatedUser.email.toLowerCase()] = {
+          dobMap[emailKey] = {
             dob: finalDob,
             isLocked: isDobNowLocked,
           };
@@ -491,7 +522,7 @@ export default function UserProfilePage() {
         try {
           const aStr = localStorage.getItem("taskflow_user_addresses");
           const addrMap = aStr ? JSON.parse(aStr) : {};
-          addrMap[updatedUser.email.toLowerCase()] = {
+          addrMap[emailKey] = {
             address: finalAddress,
             isLocked: isAddressNowLocked,
           };
@@ -504,7 +535,7 @@ export default function UserProfilePage() {
         try {
           const pStr = localStorage.getItem("taskflow_user_phones");
           const phoneMap = pStr ? JSON.parse(pStr) : {};
-          phoneMap[updatedUser.email.toLowerCase()] = finalPhone;
+          phoneMap[emailKey] = finalPhone;
           localStorage.setItem("taskflow_user_phones", JSON.stringify(phoneMap));
         } catch {}
       }
@@ -512,12 +543,15 @@ export default function UserProfilePage() {
       // 5. Cập nhật taskflow_users
       try {
         const usersStr = localStorage.getItem("taskflow_users");
-        let users = [];
+        let users: any[] = [];
         if (usersStr) {
-          try { users = JSON.parse(usersStr); } catch {}
+          try {
+            const parsed = JSON.parse(usersStr);
+            if (Array.isArray(parsed)) users = parsed;
+          } catch {}
         }
         const idx = users.findIndex(
-          (u: { email: string }) => u.email.toLowerCase() === updatedUser.email.toLowerCase()
+          (u: any) => u && u.email && u.email.trim().toLowerCase() === emailKey
         );
         if (idx !== -1) {
           users[idx].fullName = updatedUser.fullName;
@@ -551,9 +585,15 @@ export default function UserProfilePage() {
       // 6. Cập nhật taskflow_members_list đồng bộ số điện thoại, ngày sinh & địa chỉ sang Admin
       try {
         const membersStr = localStorage.getItem("taskflow_members_list");
-        let members = membersStr ? JSON.parse(membersStr) : [];
+        let members: any[] = [];
+        if (membersStr) {
+          try {
+            const parsedM = JSON.parse(membersStr);
+            if (Array.isArray(parsedM)) members = parsedM;
+          } catch {}
+        }
         const mIdx = members.findIndex(
-          (m: { email: string }) => m.email.toLowerCase() === updatedUser.email.toLowerCase()
+          (m: any) => m && m.email && m.email.trim().toLowerCase() === emailKey
         );
         if (mIdx !== -1) {
           members[mIdx].name = updatedUser.fullName;
@@ -582,17 +622,16 @@ export default function UserProfilePage() {
         localStorage.setItem("taskflow_members_list", JSON.stringify(members));
       } catch {}
 
+      // Cập nhật state trực tiếp ngay lập tức
+      setCurrentUser(updatedUser);
+      setNewAvatarSelected(null);
+      setSuccessMsg("✓ Cập nhật thông tin cá nhân thành công!");
+      setShowSuccessModal(true);
+
       // Phát sự kiện cập nhật profile để Header và các component cập nhật tức thì (0ms latency)
       window.dispatchEvent(
         new CustomEvent("taskflow_profile_updated", {
-          detail: {
-            fullName: updatedUser.fullName,
-            email: updatedUser.email,
-            avatar: updatedUser.avatar,
-            phone: updatedUser.phone,
-            dob: updatedUser.dob,
-            address: updatedUser.address,
-          },
+          detail: updatedUser,
         })
       );
       window.dispatchEvent(new Event("taskflow_members_updated"));
