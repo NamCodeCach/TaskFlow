@@ -13,12 +13,14 @@ import {
 } from "react-icons/io5";
 import {
   LuCheck,
+  LuCopy,
   LuKey,
   LuLock,
   LuPencil,
   LuShieldAlert,
   LuShieldCheck,
   LuTrash2,
+  LuUserCheck,
   LuUserPlus,
 } from "react-icons/lu";
 
@@ -143,76 +145,112 @@ export default function ThanhVien() {
   const [resetNewPass, setResetNewPass] = useState("Pass@123");
   const [showResetPass, setShowResetPass] = useState(false);
 
+  // Modal hiển thị thông tin tài khoản vừa cấp / vừa reset mật khẩu để Admin copy gửi nhân viên
+  const [provisionedAccount, setProvisionedAccount] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    isReset?: boolean;
+  } | null>(null);
+  const [copiedAccountInfo, setCopiedAccountInfo] = useState(false);
+
   // Toast thông báo
   const [toast, setToast] = useState<string | null>(null);
 
-  // Load danh sách thành viên từ localStorage và đồng bộ tài khoản đã đăng ký
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Xác định tài khoản admin đang đăng nhập
-      const curUserStr = localStorage.getItem("taskflow_current_user");
-      if (curUserStr) {
-        try {
-          const cur = JSON.parse(curUserStr);
-          if (cur.email) setCurrentAdminEmail(cur.email.toLowerCase());
-        } catch {}
-      }
+  // Hàm tải và đồng bộ danh sách thành viên tự động
+  const loadMembersData = () => {
+    if (typeof window === "undefined") return;
 
-      const savedMembersStr = localStorage.getItem("taskflow_members_list");
-      let baseList = defaultMembers;
-
-      if (savedMembersStr) {
-        try {
-          baseList = JSON.parse(savedMembersStr);
-        } catch {}
-      }
-
-      // Đọc từ điển số điện thoại taskflow_user_phones
-      let phoneMap: Record<string, string> = {};
+    // Xác định tài khoản admin đang đăng nhập
+    const curUserStr = localStorage.getItem("taskflow_current_user");
+    if (curUserStr) {
       try {
-        const pStr = localStorage.getItem("taskflow_user_phones");
-        if (pStr) phoneMap = JSON.parse(pStr);
+        const cur = JSON.parse(curUserStr);
+        if (cur.email) setCurrentAdminEmail(cur.email.toLowerCase());
       } catch {}
-
-      // Đọc thêm tài khoản và ĐỒNG BỘ SỐ ĐIỆN THOẠI từ taskflow_users
-      const usersStr = localStorage.getItem("taskflow_users");
-      if (usersStr) {
-        try {
-          const registered = JSON.parse(usersStr);
-          registered.forEach((u: { fullName: string; email: string; role?: string; phone?: string }) => {
-            const memberIdx = baseList.findIndex(
-              (m) => m.email.toLowerCase() === u.email.toLowerCase()
-            );
-            const userPhone = phoneMap[u.email.toLowerCase()] || u.phone || "";
-            if (memberIdx !== -1) {
-              // Cập nhật số điện thoại và tên mới nhất từ thông tin người dùng
-              if (userPhone) baseList[memberIdx].phone = userPhone;
-              if (u.fullName) baseList[memberIdx].name = u.fullName;
-            } else {
-              baseList.push({
-                name: u.fullName,
-                initials: getInitials(u.fullName),
-                email: u.email,
-                phone: userPhone,
-                admin: u.role === "admin",
-                tasks: 0,
-                joined: "Tham gia gần đây",
-                color: AVATAR_COLORS[baseList.length % AVATAR_COLORS.length],
-              });
-            }
-          });
-        } catch {}
-      }
-
-      // Đảm bảo mọi thành viên trong baseList đều lấy số điện thoại mới nhất từ phoneMap
-      baseList = baseList.map((m) => {
-        const ph = phoneMap[m.email.toLowerCase()] || m.phone || "";
-        return { ...m, phone: ph };
-      });
-
-      setMembersList([...baseList]);
-      localStorage.setItem("taskflow_members_list", JSON.stringify(baseList));
     }
+
+    const savedMembersStr = localStorage.getItem("taskflow_members_list");
+    let baseList = defaultMembers;
+
+    if (savedMembersStr) {
+      try {
+        baseList = JSON.parse(savedMembersStr);
+      } catch {}
+    }
+
+    // Đọc từ điển số điện thoại taskflow_user_phones
+    let phoneMap: Record<string, string> = {};
+    try {
+      const pStr = localStorage.getItem("taskflow_user_phones");
+      if (pStr) phoneMap = JSON.parse(pStr);
+    } catch {}
+
+    // Đọc thêm tài khoản và ĐỒNG BỘ SỐ ĐIỆN THOẠI từ taskflow_users
+    const usersStr = localStorage.getItem("taskflow_users");
+    if (usersStr) {
+      try {
+        const registered = JSON.parse(usersStr);
+        registered.forEach((u: { fullName: string; email: string; role?: string; phone?: string }) => {
+          const memberIdx = baseList.findIndex(
+            (m) => m.email.toLowerCase() === u.email.toLowerCase()
+          );
+          const userPhone = phoneMap[u.email.toLowerCase()] || u.phone || "";
+          if (memberIdx !== -1) {
+            // Cập nhật số điện thoại và tên mới nhất từ thông tin người dùng
+            if (userPhone) baseList[memberIdx].phone = userPhone;
+            if (u.fullName) baseList[memberIdx].name = u.fullName;
+          } else {
+            baseList.push({
+              name: u.fullName,
+              initials: getInitials(u.fullName),
+              email: u.email,
+              phone: userPhone,
+              admin: u.role === "admin",
+              tasks: 0,
+              joined: "Tham gia gần đây",
+              color: AVATAR_COLORS[baseList.length % AVATAR_COLORS.length],
+            });
+          }
+        });
+      } catch {}
+    }
+
+    // Đảm bảo mọi thành viên trong baseList đều lấy số điện thoại mới nhất từ phoneMap
+    baseList = baseList.map((m) => {
+      const ph = phoneMap[m.email.toLowerCase()] || m.phone || "";
+      return { ...m, phone: ph };
+    });
+
+    setMembersList([...baseList]);
+    localStorage.setItem("taskflow_members_list", JSON.stringify(baseList));
+  };
+
+  // Load danh sách thành viên từ localStorage và đồng bộ tài khoản tự động (Real-time)
+  useEffect(() => {
+    loadMembersData();
+
+    // 1. Tự động đồng bộ khi nhận event tạo thành viên mới hoặc cập nhật profile
+    const handleSync = () => loadMembersData();
+    window.addEventListener("taskflow_members_updated", handleSync);
+    window.addEventListener("taskflow_profile_updated", handleSync);
+
+    // 2. Tự động đồng bộ khi chuyển tab về cửa sổ Admin (Window focus)
+    window.addEventListener("focus", handleSync);
+
+    // 3. Tự động đồng bộ khi có thay đổi localStorage từ tab khác (Storage event)
+    window.addEventListener("storage", handleSync);
+
+    // 4. Polling chu kỳ 2 giây để tự động cập nhật thời gian thực
+    const intervalTimer = setInterval(loadMembersData, 2000);
+
+    return () => {
+      window.removeEventListener("taskflow_members_updated", handleSync);
+      window.removeEventListener("taskflow_profile_updated", handleSync);
+      window.removeEventListener("focus", handleSync);
+      window.removeEventListener("storage", handleSync);
+      clearInterval(intervalTimer);
+    };
   }, []);
 
   // Tự động tắt toast sau 4 giây
@@ -289,6 +327,7 @@ export default function ThanhVien() {
         email: trimmedEmail,
         password: newPassword,
         role: newRole,
+        mustChangePassword: true,
         createdAt: new Date().toISOString(),
       });
       localStorage.setItem("taskflow_users", JSON.stringify(users));
@@ -299,7 +338,15 @@ export default function ThanhVien() {
     setNewEmail("");
     setNewRole("user");
     setNewPassword("Tf@2026!");
-    setToast(`✓ Đã thêm thành viên "${trimmedName}" thành công!`);
+    setProvisionedAccount({
+      name: trimmedName,
+      email: trimmedEmail,
+      password: newPassword,
+      isReset: false,
+    });
+    setCopiedAccountInfo(false);
+    setToast(`✓ Đã cấp tài khoản thành công cho "${trimmedName}"!`);
+    window.dispatchEvent(new Event("taskflow_members_updated"));
   };
 
   // Mở modal Chỉnh sửa
@@ -469,6 +516,7 @@ export default function ThanhVien() {
 
       if (userIdx !== -1) {
         users[userIdx].password = resetNewPass;
+        users[userIdx].mustChangePassword = true;
       } else {
         // Nếu là tài khoản mặc định, ghi vào taskflow_users để lưu mật khẩu mới
         users.push({
@@ -476,14 +524,24 @@ export default function ThanhVien() {
           email: resettingPasswordMember.email,
           password: resetNewPass,
           role: resettingPasswordMember.admin ? "admin" : "user",
+          mustChangePassword: true,
         });
       }
       localStorage.setItem("taskflow_users", JSON.stringify(users));
     } catch {}
 
     const memberName = resettingPasswordMember.name;
+    const memberEmail = resettingPasswordMember.email;
     setResettingPasswordMember(null);
-    setToast(`✓ Đã đặt lại mật khẩu cho "${memberName}" thành công! Mật khẩu mới: ${resetNewPass}`);
+    setProvisionedAccount({
+      name: memberName,
+      email: memberEmail,
+      password: resetNewPass,
+      isReset: true,
+    });
+    setCopiedAccountInfo(false);
+    setToast(`✓ Đã đặt lại mật khẩu tạm thời cho "${memberName}"!`);
+    window.dispatchEvent(new Event("taskflow_members_updated"));
   };
 
   // Mở modal Xác nhận Xóa
@@ -580,7 +638,7 @@ export default function ThanhVien() {
               }}
             >
               <LuUserPlus size={16} />
-              + Thêm thành viên
+              + Cấp tài khoản mới
             </button>
           </header>
 
@@ -844,9 +902,9 @@ export default function ThanhVien() {
               {/* Header */}
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-[22px] font-bold text-slate-800">Thêm thành viên mới</h3>
+                  <h3 className="text-[22px] font-bold text-slate-800">Cấp tài khoản & Mật khẩu tạm thời</h3>
                   <p className="mt-1 text-[13px] text-slate-500">
-                    Tạo tài khoản và cấp quyền cho thành viên tham gia nhóm.
+                    Cấp email công ty và mật khẩu tạm thời cho nhân viên mới. Nhân viên bắt buộc đổi mật khẩu khi đăng nhập lần đầu.
                   </p>
                 </div>
                 <button
@@ -953,9 +1011,10 @@ export default function ThanhVien() {
                   </button>
                   <button
                     type="submit"
-                    className="cursor-pointer rounded-[10px] bg-main px-[18px] py-[9px] text-[13px] font-semibold text-white hover:bg-main/90 transition shadow-sm"
+                    className="cursor-pointer rounded-[10px] bg-main px-[18px] py-[9px] text-[13px] font-semibold text-white hover:bg-main/90 transition shadow-sm flex items-center gap-1.5"
                   >
-                    Tạo tài khoản mới
+                    <LuUserPlus size={16} />
+                    Cấp tài khoản cho nhân viên
                   </button>
                 </div>
               </form>
@@ -1232,6 +1291,99 @@ export default function ThanhVien() {
                   className="cursor-pointer rounded-[10px] bg-red-600 hover:bg-red-700 px-[18px] py-[9px] text-[13px] font-semibold text-white transition shadow-sm"
                 >
                   Xác nhận xóa
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ============================================================ */}
+      {/* 5. MODAL: THÔNG BÁO CẤP TÀI KHOẢN / RESET MẬT KHẨU THÀNH CÔNG */}
+      {/* ============================================================ */}
+      {provisionedAccount &&
+        createPortal(
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-[500px] rounded-[24px] bg-white p-[30px] sm:p-[36px] shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-xs">
+                    {provisionedAccount.isReset ? <LuKey size={24} /> : <LuUserCheck size={24} />}
+                  </div>
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 tracking-wide uppercase">
+                      {provisionedAccount.isReset ? "Đã đặt lại mật khẩu" : "Cấp tài khoản thành công"}
+                    </span>
+                    <h3 className="text-[20px] font-bold text-slate-800 mt-1">
+                      {provisionedAccount.isReset ? "Thông tin mật khẩu mới" : "Thông tin tài khoản nhân viên"}
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setProvisionedAccount(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+                >
+                  <IoClose size={22} />
+                </button>
+              </div>
+
+              {/* Thông tin chi tiết */}
+              <div className="mt-5 space-y-3">
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                    <span className="text-slate-500 font-medium">Họ và tên nhân viên:</span>
+                    <span className="text-slate-800 font-bold text-[13px]">{provisionedAccount.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                    <span className="text-slate-500 font-medium">Email công ty:</span>
+                    <span className="text-main font-bold font-mono text-[13px]">{provisionedAccount.email}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-slate-500 font-medium">Mật khẩu tạm thời:</span>
+                    <div className="flex items-center gap-2">
+                      <code className="px-2.5 py-1 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg font-bold font-mono text-[14px]">
+                        {provisionedAccount.password}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Huy hiệu cảnh báo đổi mật khẩu */}
+                <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl flex items-start gap-2.5 text-xs text-amber-800">
+                  <span className="text-base leading-none">🛡️</span>
+                  <div>
+                    <span className="font-bold">Chính sách bảo mật:</span> Nhân viên sẽ được yêu cầu <strong>bắt buộc đổi sang mật khẩu cá nhân mới</strong> ngay khi đăng nhập lần đầu tiên.
+                  </div>
+                </div>
+              </div>
+
+              {/* Nút hành động */}
+              <div className="mt-6 flex flex-col sm:flex-row gap-2.5 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = `THÔNG TIN TÀI KHOẢN TASKFLOW:\n- Họ và tên: ${provisionedAccount.name}\n- Email: ${provisionedAccount.email}\n- Mật khẩu tạm thời: ${provisionedAccount.password}\n⚠️ Lưu ý: Vì lý do an toàn, bạn bắt buộc phải đổi sang mật khẩu mới khi đăng nhập lần đầu tiên tại: ${typeof window !== "undefined" ? window.location.origin : ""}/account/login`;
+                    navigator.clipboard.writeText(text);
+                    setCopiedAccountInfo(true);
+                    setTimeout(() => setCopiedAccountInfo(false), 2500);
+                  }}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                    copiedAccountInfo
+                      ? "bg-emerald-600 text-white"
+                      : "bg-main text-white hover:bg-main/90"
+                  }`}
+                >
+                  {copiedAccountInfo ? <LuCheck size={16} /> : <LuCopy size={16} />}
+                  <span>{copiedAccountInfo ? "✓ Đã sao chép vào bộ nhớ tạm!" : "📋 Sao chép thông tin gửi nhân viên"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvisionedAccount(null)}
+                  className="py-2.5 px-5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Đóng
                 </button>
               </div>
             </div>

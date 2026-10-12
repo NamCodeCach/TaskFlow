@@ -4,8 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FaListCheck, FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
-import { LuLockKeyhole } from "react-icons/lu";
+import { LuCheck, LuKeyRound, LuLock, LuLockKeyhole, LuShieldAlert, LuUserCheck, LuX } from "react-icons/lu";
 import { MdOutlineEmail } from "react-icons/md";
+
+interface UserAccount {
+  fullName: string;
+  email: string;
+  password?: string;
+  role?: string;
+  mustChangePassword?: boolean;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,20 +33,23 @@ export default function LoginPage() {
   const [countdown, setCountdown] = useState<number>(0);
   const [isLocked, setIsLocked] = useState(false);
 
-  // Đọc dữ liệu khóa & kiểm tra URL query khi vào trang
+  // =========================================================================
+  // STATE ĐỔI MẬT KHẨU LẦN ĐẦU (CHO TÀI KHOẢN ĐƯỢC CẤP MẬT KHẨU TẠM THỜI)
+  // =========================================================================
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<UserAccount | null>(null);
+  const [firstTimeNewPass, setFirstTimeNewPass] = useState("");
+  const [firstTimeConfirmPass, setFirstTimeConfirmPass] = useState("");
+  const [showFirstTimeNewPass, setShowFirstTimeNewPass] = useState(false);
+  const [showFirstTimeConfirmPass, setShowFirstTimeConfirmPass] = useState(false);
+  const [firstTimeError, setFirstTimeError] = useState<string | null>(null);
+
+  // Đọc dữ liệu khóa khi vào trang
   useEffect(() => {
-    // Luôn đảm bảo ô nhập trống hoàn toàn khi tải trang
     setEmail("");
     setPassword("");
 
-    // Kiểm tra nếu vừa đăng ký thành công chuyển về
     if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("registered") === "success") {
-        setSuccessMessage("Đăng ký tài khoản thành công! Vui lòng đăng nhập để tiếp tục.");
-      }
-
-      // Đọc trạng thái khóa từ localStorage
       const savedLock = localStorage.getItem("taskflow_lock_until");
       const savedAttempts = localStorage.getItem("taskflow_failed_attempts");
 
@@ -102,7 +113,7 @@ export default function LoginPage() {
     const inputPassword = password;
 
     if (!trimmedEmail) {
-      setErrorMessage("Vui lòng nhập địa chỉ Gmail!");
+      setErrorMessage("Vui lòng nhập địa chỉ Email!");
       return;
     }
 
@@ -113,10 +124,10 @@ export default function LoginPage() {
 
     // Lấy danh sách tài khoản từ localStorage
     const storedUsersStr = localStorage.getItem("taskflow_users");
-    const registeredUsers = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+    const registeredUsers: UserAccount[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
 
-    // Thêm sẵn tài khoản mặc định demo hệ thống (Chỉ DUY NHẤT 1 Quản trị viên)
-    const defaultAccounts = [
+    // Tài khoản mặc định demo hệ thống (Chỉ 1 Quản trị viên duy nhất)
+    const defaultAccounts: UserAccount[] = [
       {
         fullName: "Lê Trần Hoàng Nam",
         email: "nam.nguyen@taskflow.vn",
@@ -131,13 +142,19 @@ export default function LoginPage() {
       },
     ];
 
-    const allUsers = [...registeredUsers, ...defaultAccounts];
+    // Gộp và ưu tiên bản ghi mới nhất trong taskflow_users
+    const allUsersMap: Record<string, UserAccount> = {};
+    defaultAccounts.forEach((u) => {
+      allUsersMap[u.email.toLowerCase()] = u;
+    });
+    registeredUsers.forEach((u) => {
+      allUsersMap[u.email.toLowerCase()] = u;
+    });
 
-    // Tìm tài khoản theo email
-    const user = allUsers.find((u) => u.email.toLowerCase() === trimmedEmail);
+    const user = allUsersMap[trimmedEmail];
 
     if (!user) {
-      setErrorMessage("Tài khoản Gmail này không tồn tại trên hệ thống. Vui lòng kiểm tra lại!");
+      setErrorMessage("Tài khoản này không tồn tại trên hệ thống. Vui lòng kiểm tra lại hoặc liên hệ Quản trị viên!");
       return;
     }
 
@@ -166,10 +183,29 @@ export default function LoginPage() {
       return;
     }
 
-    // Đăng nhập thành công -> Reset số lần sai
-    const userRole = user.role || "user";
+    // Đăng nhập đúng thông tin -> Reset bộ đếm số lần sai
     localStorage.removeItem("taskflow_lock_until");
     localStorage.removeItem("taskflow_failed_attempts");
+
+    // =========================================================================
+    // NẾU TÀI KHOẢN ĐANG CÓ CỜ "BẮT BUỘC ĐỔI MẬT KHẨU LẦN ĐẦU" (mustChangePassword)
+    // =========================================================================
+    if (user.mustChangePassword) {
+      setPendingUser(user);
+      setFirstTimeNewPass("");
+      setFirstTimeConfirmPass("");
+      setFirstTimeError(null);
+      setShowFirstTimeModal(true);
+      return;
+    }
+
+    // Nếu không yêu cầu đổi mật khẩu -> Cho vào hệ thống bình thường
+    completeSuccessfulLogin(user);
+  };
+
+  // Hoàn tất lưu phiên đăng nhập và chuyển hướng
+  const completeSuccessfulLogin = (user: UserAccount) => {
+    const userRole = user.role || "user";
     localStorage.setItem(
       "taskflow_current_user",
       JSON.stringify({
@@ -180,11 +216,74 @@ export default function LoginPage() {
       })
     );
 
-    // Chuyển hướng phân quyền
     if (userRole === "admin") {
       router.push("/admin/member/list");
     } else {
       router.push("/user/task/list");
+    }
+  };
+
+  // =========================================================================
+  // XỬ LÝ NỘP FORM ĐỔI MẬT KHẨU LẦN ĐẦU
+  // =========================================================================
+  const handleConfirmFirstTimePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFirstTimeError(null);
+
+    if (!pendingUser) return;
+
+    if (!firstTimeNewPass || firstTimeNewPass.length < 6) {
+      setFirstTimeError("Mật khẩu mới phải có tối thiểu 6 ký tự!");
+      return;
+    }
+
+    if (firstTimeNewPass !== firstTimeConfirmPass) {
+      setFirstTimeError("Xác nhận mật khẩu không khớp với mật khẩu mới!");
+      return;
+    }
+
+    if (firstTimeNewPass === password) {
+      setFirstTimeError("Mật khẩu mới không được trùng với mật khẩu tạm thời cũ!");
+      return;
+    }
+
+    // Cập nhật lại mật khẩu mới & gỡ bỏ cờ mustChangePassword trong taskflow_users
+    try {
+      const storedUsersStr = localStorage.getItem("taskflow_users");
+      let users: UserAccount[] = storedUsersStr ? JSON.parse(storedUsersStr) : [];
+      
+      const idx = users.findIndex(
+        (u) => u.email.toLowerCase() === pendingUser.email.toLowerCase()
+      );
+
+      if (idx !== -1) {
+        users[idx].password = firstTimeNewPass;
+        users[idx].mustChangePassword = false;
+      } else {
+        users.push({
+          fullName: pendingUser.fullName,
+          email: pendingUser.email,
+          role: pendingUser.role || "user",
+          password: firstTimeNewPass,
+          mustChangePassword: false,
+        });
+      }
+
+      localStorage.setItem("taskflow_users", JSON.stringify(users));
+
+      // Đóng modal & hoàn tất đăng nhập
+      setShowFirstTimeModal(false);
+      setSuccessMessage("✓ Đổi mật khẩu thành công! Đang chuyển hướng vào hệ thống...");
+      
+      setTimeout(() => {
+        completeSuccessfulLogin({
+          ...pendingUser,
+          password: firstTimeNewPass,
+          mustChangePassword: false,
+        });
+      }, 600);
+    } catch {
+      setFirstTimeError("Có lỗi xảy ra khi lưu mật khẩu. Vui lòng thử lại!");
     }
   };
 
@@ -195,7 +294,7 @@ export default function LoginPage() {
           <div className="flex flex-col mx-auto p-[32px] sm:p-[40px] max-w-[480px] bg-white border border-[#E2E8F0] rounded-[24px] shadow-[0px_20px_60px_0px_#10182826]">
             {/* Logo */}
             <div className="flex items-center justify-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-main text-lg text-white">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-main text-lg text-white shadow-sm">
                 <FaListCheck />
               </div>
               <span className="text-2xl font-bold text-text">TaskFlow</span>
@@ -206,13 +305,13 @@ export default function LoginPage() {
             </h3>
 
             <p className="text-[14px] text-[#475569] text-center font-[400] mt-1">
-              Đăng nhập để cùng nhóm biến kế hoạch thành kết quả.
+              Đăng nhập bằng tài khoản công ty do Quản trị viên cấp.
             </p>
 
-            {/* Thông báo đăng ký thành công */}
+            {/* Thông báo thành công */}
             {successMessage && (
-              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl font-medium text-center">
-                ✓ {successMessage}
+              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl font-medium text-center animate-in fade-in">
+                {successMessage}
               </div>
             )}
 
@@ -229,7 +328,7 @@ export default function LoginPage() {
 
             {/* Thông báo lỗi */}
             {errorMessage && !isLocked && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium text-center">
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium text-center animate-in fade-in">
                 {errorMessage}
               </div>
             )}
@@ -244,7 +343,7 @@ export default function LoginPage() {
               {/* Email */}
               <div className="flex flex-col gap-[8px]">
                 <label htmlFor="email-user" className="text-[#475569] text-[14px] font-medium">
-                  Email
+                  Email công ty
                 </label>
                 <div className="w-full flex items-center gap-2 border-[1px] border-[#E2E8F0] rounded-full px-[14px] py-[13px] transition focus-within:border-main focus-within:ring-2 focus-within:ring-main/20">
                   <MdOutlineEmail className="text-gray-400 text-[18px] shrink-0" />
@@ -263,7 +362,7 @@ export default function LoginPage() {
                       setEmail(e.target.value);
                       if (errorMessage) setErrorMessage(null);
                     }}
-                    placeholder="nguyenvana@gmail.com"
+                    placeholder="nguyenvana@taskflow.vn"
                     className="w-full outline-none text-sm text-slate-700 disabled:bg-transparent disabled:text-slate-400"
                   />
                 </div>
@@ -284,7 +383,7 @@ export default function LoginPage() {
                     autoComplete="new-password"
                     disabled={isLocked}
                     value={password}
-                    placeholder="Nhập mật khẩu"
+                    placeholder="Nhập mật khẩu hoặc mật khẩu tạm thời"
                     onChange={(e) => {
                       setPassword(e.target.value);
                       if (errorMessage) setErrorMessage(null);
@@ -294,7 +393,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="text-gray-400 hover:text-slate-600 transition"
+                    className="text-gray-400 hover:text-slate-600 transition cursor-pointer"
                   >
                     {showPassword ? <FaRegEye size={16} /> : <FaRegEyeSlash size={16} />}
                   </button>
@@ -309,7 +408,7 @@ export default function LoginPage() {
                     id="remember-password"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded accent-main h-4 w-4"
+                    className="rounded accent-main h-4 w-4 cursor-pointer"
                   />
                   <label
                     htmlFor="remember-password"
@@ -336,25 +435,155 @@ export default function LoginPage() {
                     : "bg-main hover:opacity-95 cursor-pointer"
                 }`}
               >
-                {isLocked ? `Đang khóa (${countdown}s)` : "Đăng nhập"}
+                {isLocked ? `Đang khóa (${countdown}s)` : "Đăng nhập hệ thống"}
               </button>
 
-              {/* Chuyển sang Đăng ký */}
-              <div className="flex items-center justify-center text-[#475569] text-[14px] gap-[6px] flex-wrap text-center mt-1">
-                <span>Chưa có tài khoản?</span>
-                <Link
-                  href="/account/register"
-                  className="font-semibold text-main hover:underline transition"
-                >
-                  Đăng ký tài khoản
-                </Link>
-                <span className="text-slate-400">|</span>
-                <span className="text-slate-500 text-[13px]">Liên hệ quản trị viên</span>
+              {/* Thông báo chính sách cấp tài khoản nội bộ (Đã xóa dòng đăng ký) */}
+              <div className="flex flex-col items-center justify-center text-center mt-2 p-3.5 bg-slate-50 border border-slate-200/90 rounded-2xl gap-1">
+                <div className="flex items-center gap-1.5 text-slate-600 text-[12.5px] font-semibold">
+                  <LuShieldAlert className="text-amber-500 text-sm" />
+                  <span>Chưa có tài khoản công ty?</span>
+                </div>
+                <p className="text-[12px] text-slate-500 leading-snug">
+                  Hệ thống không mở đăng ký tự do. Vui lòng liên hệ <strong>Quản trị viên (Admin)</strong> để được cấp Email & Mật khẩu tạm thời.
+                </p>
               </div>
             </form>
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* MODAL BẮT BUỘC ĐỔI MẬT KHẨU LẦN ĐẦU (FIRST-TIME LOGIN PASSWORD CHANGE)     */}
+      {/* ========================================================================= */}
+      {showFirstTimeModal && pendingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-[480px] rounded-[24px] bg-white p-[30px] sm:p-[36px] shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl shadow-xs">
+                  <LuKeyRound size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 tracking-wide uppercase">
+                      Lần đầu đăng nhập
+                    </span>
+                  </div>
+                  <h3 className="text-[19px] font-bold text-slate-800 mt-1">
+                    Đổi mật khẩu bảo mật
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFirstTimeModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+              >
+                <LuX size={20} />
+              </button>
+            </div>
+
+            {/* Thông tin tài khoản */}
+            <div className="mt-4 p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-main text-white font-bold text-xs flex items-center justify-center shrink-0">
+                <LuUserCheck size={18} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">{pendingUser.fullName}</p>
+                <p className="text-[11.5px] text-slate-500 font-mono truncate">{pendingUser.email}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+              Tài khoản này đang sử dụng <strong>Mật khẩu tạm thời</strong> do Quản trị viên cấp. Vì lý do an toàn, bạn bắt buộc phải thiết lập mật khẩu cá nhân mới để kích hoạt tài khoản.
+            </p>
+
+            {/* Thông báo lỗi trong modal */}
+            {firstTimeError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium animate-in fade-in">
+                ⚠️ {firstTimeError}
+              </div>
+            )}
+
+            {/* Form đổi mật khẩu */}
+            <form onSubmit={handleConfirmFirstTimePassword} className="mt-4 flex flex-col gap-3.5">
+              {/* Mật khẩu mới */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  Mật khẩu mới (Tối thiểu 6 ký tự) *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showFirstTimeNewPass ? "text" : "password"}
+                    required
+                    autoFocus
+                    value={firstTimeNewPass}
+                    onChange={(e) => {
+                      setFirstTimeNewPass(e.target.value);
+                      if (firstTimeError) setFirstTimeError(null);
+                    }}
+                    placeholder="Nhập mật khẩu mới của bạn..."
+                    className="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-10 text-sm outline-none focus:border-main focus:ring-1 focus:ring-main"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFirstTimeNewPass((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showFirstTimeNewPass ? <FaRegEyeSlash size={16} /> : <FaRegEye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Nhập lại mật khẩu mới */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-700">
+                  Xác nhận lại mật khẩu mới *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showFirstTimeConfirmPass ? "text" : "password"}
+                    required
+                    value={firstTimeConfirmPass}
+                    onChange={(e) => {
+                      setFirstTimeConfirmPass(e.target.value);
+                      if (firstTimeError) setFirstTimeError(null);
+                    }}
+                    placeholder="Nhập lại mật khẩu mới..."
+                    className="w-full rounded-xl border border-slate-200 py-2.5 pl-3 pr-10 text-sm outline-none focus:border-main focus:ring-1 focus:ring-main"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFirstTimeConfirmPass((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showFirstTimeConfirmPass ? <FaRegEyeSlash size={16} /> : <FaRegEye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2 flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowFirstTimeModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Hủy đăng nhập
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-main px-5 py-2.5 text-xs font-semibold text-white hover:bg-main/90 transition shadow-sm cursor-pointer flex items-center gap-1.5"
+                >
+                  <LuCheck size={16} />
+                  Xác nhận & Vào hệ thống
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

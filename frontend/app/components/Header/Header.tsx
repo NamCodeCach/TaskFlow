@@ -161,11 +161,6 @@ export const Header = () => {
     router.push("/account/login");
   };
 
-  // Chuyển sang trang Đăng ký tài khoản phụ
-  const handleGoToAddSubAccount = () => {
-    setShowAccountMenu(false);
-    router.push(`/account/register?subaccount=true&parent=${encodeURIComponent(currentUser.email)}`);
-  };
 
   // Khi bấm vào 1 tài khoản phụ -> Hiện popup hỏi mật khẩu
   const handleSelectSubAccount = (sub: SubAccount) => {
@@ -409,15 +404,6 @@ export const Header = () => {
 
                 {/* Danh sách hành động */}
                 <div className="mt-4 border-t border-slate-100 pt-3 flex flex-col gap-1">
-                  {/* Thêm tài khoản phụ */}
-                  <button
-                    type="button"
-                    onClick={handleGoToAddSubAccount}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition text-left cursor-pointer"
-                  >
-                    <LuUserPlus className="text-slate-500 text-[16px]" />
-                    <span>Thêm tài khoản phụ</span>
-                  </button>
 
                   {/* Xem thông tin cá nhân (Form thực quyền người dùng) */}
                   <Link
