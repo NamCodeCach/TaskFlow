@@ -33,6 +33,7 @@ interface MemberItem {
   joined: string;
   color: string;
   phone?: string;
+  dob?: string;
   password?: string;
   mustChangePassword?: boolean;
 }
@@ -152,6 +153,7 @@ export default function ThanhVien() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editDob, setEditDob] = useState("");
   const [editRole, setEditRole] = useState<"user" | "admin">("user");
   const [editError, setEditError] = useState<string | null>(null);
 
@@ -403,10 +405,37 @@ export default function ThanhVien() {
       } catch {}
     }
 
+    // Đọc ngày sinh từ taskflow_user_dobs hoặc taskflow_users
+    let currentDob = member.dob || "";
+    try {
+      const dStr = localStorage.getItem("taskflow_user_dobs");
+      if (dStr) {
+        const dobMap = JSON.parse(dStr);
+        if (dobMap[member.email.toLowerCase()]) {
+          currentDob = dobMap[member.email.toLowerCase()].dob || currentDob;
+        }
+      }
+    } catch {}
+
+    if (!currentDob) {
+      try {
+        const usersStr = localStorage.getItem("taskflow_users");
+        if (usersStr) {
+          const users = JSON.parse(usersStr);
+          const u = users.find(
+            (x: { email: string; dob?: string }) =>
+              x.email.toLowerCase() === member.email.toLowerCase()
+          );
+          if (u && u.dob) currentDob = u.dob;
+        }
+      } catch {}
+    }
+
     setEditingMember(member);
     setEditName(member.name);
     setEditEmail(member.email);
     setEditPhone(currentPhone);
+    setEditDob(currentDob);
     setEditRole(member.admin ? "admin" : "user");
     setEditError(null);
     setActiveMenuEmail(null);
@@ -451,6 +480,7 @@ export default function ThanhVien() {
           initials: getInitials(trimmedName),
           email: trimmedEmail,
           phone: editPhone.trim(),
+          dob: editDob.trim(),
           admin: isMainAdmin,
         };
       }
@@ -467,6 +497,19 @@ export default function ThanhVien() {
       localStorage.setItem("taskflow_user_phones", JSON.stringify(phoneMap));
     } catch {}
 
+    // Đồng bộ vào taskflow_user_dobs
+    if (editDob.trim()) {
+      try {
+        const dStr = localStorage.getItem("taskflow_user_dobs");
+        const dobMap = dStr ? JSON.parse(dStr) : {};
+        dobMap[editingMember.email.toLowerCase()] = {
+          dob: editDob.trim(),
+          isLocked: true,
+        };
+        localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
+      } catch {}
+    }
+
     // Đồng bộ vào taskflow_users trong localStorage
     try {
       const usersStr = localStorage.getItem("taskflow_users");
@@ -481,12 +524,16 @@ export default function ThanhVien() {
         users[userIdx].fullName = trimmedName;
         users[userIdx].email = trimmedEmail;
         users[userIdx].phone = editPhone.trim();
+        users[userIdx].dob = editDob.trim();
+        users[userIdx].isDobLocked = true;
         users[userIdx].role = finalRole;
       } else {
         users.push({
           fullName: trimmedName,
           email: trimmedEmail,
           phone: editPhone.trim(),
+          dob: editDob.trim(),
+          isDobLocked: true,
           role: finalRole,
           createdAt: new Date().toISOString(),
         });
@@ -501,6 +548,8 @@ export default function ThanhVien() {
           cur.fullName = trimmedName;
           cur.email = trimmedEmail;
           cur.phone = editPhone.trim();
+          cur.dob = editDob.trim();
+          cur.isDobLocked = true;
           cur.role = finalRole;
           localStorage.setItem("taskflow_current_user", JSON.stringify(cur));
           window.dispatchEvent(new Event("taskflow_profile_updated"));
@@ -1141,6 +1190,28 @@ export default function ThanhVien() {
                   />
                   <p className="text-[11px] text-slate-400">
                     🔒 Thành viên chỉ được nhập số điện thoại một lần. Chỉ Admin mới có quyền cập nhật lại tại đây.
+                  </p>
+                </div>
+
+                {/* Ngày / tháng / năm sinh (Chỉ Admin mới có quyền sửa) */}
+                <div className="flex w-full flex-col gap-[6px]">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-semibold text-slate-700">
+                      Ngày / tháng / năm sinh
+                    </label>
+                    <span className="text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full font-semibold border border-indigo-200">
+                      Chỉ Admin được sửa
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={editDob}
+                    onChange={(e) => setEditDob(e.target.value)}
+                    placeholder="Ví dụ: 27/04/2005"
+                    className="rounded-[10px] border border-slate-200 px-[12px] py-[10px] text-[13.5px] outline-none focus:border-main focus:ring-1 focus:ring-main font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    🔒 Thành viên chỉ được đặt ngày sinh 1 lần và bị khóa. Chỉ Quản trị viên (Admin) mới có quyền cập nhật lại tại đây.
                   </p>
                 </div>
 

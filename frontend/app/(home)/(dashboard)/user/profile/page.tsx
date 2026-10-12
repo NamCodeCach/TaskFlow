@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   LuCamera,
   LuCalendar,
   LuCheck,
+  LuChevronLeft,
   LuChevronRight,
   LuInfo,
   LuLock,
@@ -15,6 +17,7 @@ import {
   LuShieldCheck,
   LuUser,
   LuMapPin,
+  LuX,
 } from "react-icons/lu";
 
 interface UserData {
@@ -23,6 +26,7 @@ interface UserData {
   role?: string;
   avatar?: string;
   dob?: string;
+  isDobLocked?: boolean;
   phone?: string;
   address?: string;
   lastAvatarChangedDate?: string;
@@ -30,11 +34,14 @@ interface UserData {
 }
 
 export default function UserProfilePage() {
+  const router = useRouter();
+
   const [currentUser, setCurrentUser] = useState<UserData>({
     fullName: "Nguyễn Võ Anh Kiệt",
     email: "kiet.nguyen@taskflow.vn",
     role: "user",
-    dob: "27/04/2005",
+    dob: "",
+    isDobLocked: false,
     address: "TP. Hồ Chí Minh",
     phone: "",
   });
@@ -44,6 +51,19 @@ export default function UserProfilePage() {
   const [phoneInput, setPhoneInput] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [newAvatarSelected, setNewAvatarSelected] = useState<string | null>(null);
+
+  // State Ngày / Tháng / Năm sinh & Lịch (Calendar)
+  const [dayVal, setDayVal] = useState("27");
+  const [monthVal, setMonthVal] = useState("04");
+  const [yearVal, setYearVal] = useState("2005");
+  const [calYear, setCalYear] = useState(2005);
+  const [calMonth, setCalMonth] = useState(3); // 0-indexed: 3 = Tháng 4
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const dayRef = useRef<HTMLInputElement>(null);
+  const monthRef = useRef<HTMLInputElement>(null);
+  const yearRef = useRef<HTMLInputElement>(null);
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
 
   // Modal thông báo thành công
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -69,8 +89,26 @@ export default function UserProfilePage() {
   // Kiểm tra điều kiện giới hạn 1 ngày 1 lần
   const isAvatarLockedToday = currentUser.lastAvatarChangedDate === todayStr;
   const isNameLockedToday = currentUser.lastNameChangedDate === todayStr;
+
   // Số điện thoại chỉ được nhập 1 lần: nếu đã có phone lưu thì khóa vĩnh viễn
   const isPhoneLockedForever = Boolean(currentUser.phone && currentUser.phone.trim() !== "");
+
+  // Ngày sinh chỉ được đặt 1 lần và khóa vĩnh viễn (chỉ Admin mới sửa được)
+  const isDobLockedForever = Boolean(currentUser.isDobLocked);
+
+  // Đóng lịch khi click ra ngoài
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        calendarContainerRef.current &&
+        !calendarContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowCalendar(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Đọc thông tin từ localStorage khi tải trang
   useEffect(() => {
@@ -80,7 +118,8 @@ export default function UserProfilePage() {
         fullName: "Nguyễn Võ Anh Kiệt",
         email: "kiet.nguyen@taskflow.vn",
         role: "user",
-        dob: "27/04/2005",
+        dob: "",
+        isDobLocked: false,
         address: "TP. Hồ Chí Minh",
         phone: "",
       };
@@ -91,6 +130,19 @@ export default function UserProfilePage() {
           baseUser = { ...baseUser, ...parsed };
         } catch {}
       }
+
+      // Đọc từ điển ngày sinh taskflow_user_dobs
+      try {
+        const dStr = localStorage.getItem("taskflow_user_dobs");
+        if (dStr) {
+          const dobMap = JSON.parse(dStr);
+          if (dobMap[baseUser.email.toLowerCase()]) {
+            const entry = dobMap[baseUser.email.toLowerCase()];
+            baseUser.dob = entry.dob || baseUser.dob || "";
+            baseUser.isDobLocked = entry.isLocked ?? baseUser.isDobLocked;
+          }
+        }
+      } catch {}
 
       // Tìm thông tin chi tiết từ taskflow_users (nếu có dob, phone, address)
       try {
@@ -103,7 +155,8 @@ export default function UserProfilePage() {
           if (matched) {
             baseUser = {
               ...baseUser,
-              dob: matched.dob || baseUser.dob || "27/04/2005",
+              dob: matched.dob || baseUser.dob || "",
+              isDobLocked: matched.isDobLocked ?? baseUser.isDobLocked,
               phone: matched.phone || baseUser.phone || "",
               address: matched.address || baseUser.address || "TP. Hồ Chí Minh",
               lastAvatarChangedDate: matched.lastAvatarChangedDate || baseUser.lastAvatarChangedDate,
@@ -128,6 +181,25 @@ export default function UserProfilePage() {
       setCurrentUser(baseUser);
       setNameInput(baseUser.fullName);
       setPhoneInput(baseUser.phone || "");
+
+      // Khởi tạo ngày / tháng / năm cho ô nhập
+      if (baseUser.dob) {
+        const parts = baseUser.dob.split("/");
+        if (parts.length === 3) {
+          setDayVal(parts[0]);
+          setMonthVal(parts[1]);
+          setYearVal(parts[2]);
+          const parsedM = parseInt(parts[1], 10);
+          const parsedY = parseInt(parts[2], 10);
+          if (!isNaN(parsedM) && parsedM >= 1 && parsedM <= 12) setCalMonth(parsedM - 1);
+          if (!isNaN(parsedY) && parsedY >= 1900) setCalYear(parsedY);
+        }
+      } else {
+        setDayVal("");
+        setMonthVal("");
+        setYearVal("");
+      }
+
       if (baseUser.avatar) {
         setAvatarPreview(baseUser.avatar);
       }
@@ -148,9 +220,7 @@ export default function UserProfilePage() {
     setSuccessMsg(null);
 
     if (isAvatarLockedToday) {
-      setErrorMsg(
-        `🔒 Bạn đã thay đổi ảnh đại diện hôm nay (${todayStr}). Theo quy định, mỗi ngày chỉ được đổi ảnh 1 lần. Vui lòng quay lại vào ngày mai!`
-      );
+      setErrorMsg("🔒 Bạn đã thay đổi ảnh đại diện hôm nay. Quy định tối đa 1 lần / ngày!");
       return;
     }
 
@@ -200,13 +270,44 @@ export default function UserProfilePage() {
     let finalPhone = currentUser.phone || "";
     if (!isPhoneLockedForever && phoneInput.trim()) {
       const cleanPhone = phoneInput.trim().replace(/\s+/g, "");
-      // Kiểm tra định dạng số điện thoại Việt Nam (10 số, bắt đầu bằng 0)
       if (!/(84|0[3|5|7|8|9])+([0-9]{8})\b/.test(cleanPhone)) {
         setErrorMsg("Số điện thoại không đúng định dạng (Ví dụ: 0912345678)!");
         if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       finalPhone = cleanPhone;
+    }
+
+    // Kiểm tra Ngày / Tháng / Năm sinh nếu nhập lần đầu
+    let finalDob = currentUser.dob || "";
+    let isDobNowLocked = currentUser.isDobLocked || false;
+
+    if (!isDobLockedForever) {
+      if (dayVal || monthVal || yearVal) {
+        const d = parseInt(dayVal, 10);
+        const m = parseInt(monthVal, 10);
+        const y = parseInt(yearVal, 10);
+
+        if (isNaN(d) || d < 1 || d > 31) {
+          setErrorMsg("Ngày sinh không hợp lệ (từ 01 đến 31)!");
+          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+        if (isNaN(m) || m < 1 || m > 12) {
+          setErrorMsg("Tháng sinh không hợp lệ (từ 01 đến 12)!");
+          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+        const currentYear = new Date().getFullYear();
+        if (isNaN(y) || y < 1920 || y > currentYear) {
+          setErrorMsg(`Năm sinh không hợp lệ (từ 1920 đến ${currentYear})!`);
+          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+
+        finalDob = `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
+        isDobNowLocked = true; // Khóa vĩnh viễn sau lần lưu đầu tiên
+      }
     }
 
     // Kiểm tra xem có thay đổi Tên không
@@ -233,6 +334,8 @@ export default function UserProfilePage() {
         ...currentUser,
         fullName: trimmedName,
         phone: finalPhone,
+        dob: finalDob,
+        isDobLocked: isDobNowLocked,
         avatar: newAvatarSelected ? newAvatarSelected : currentUser.avatar,
         lastAvatarChangedDate: isAvatarChanged ? todayStr : currentUser.lastAvatarChangedDate,
         lastNameChangedDate: isNameChanged ? todayStr : currentUser.lastNameChangedDate,
@@ -241,7 +344,20 @@ export default function UserProfilePage() {
       // 1. Cập nhật taskflow_current_user
       localStorage.setItem("taskflow_current_user", JSON.stringify(updatedUser));
 
-      // 2. Cập nhật từ điển số điện thoại taskflow_user_phones
+      // 2. Cập nhật từ điển ngày sinh taskflow_user_dobs
+      if (finalDob) {
+        try {
+          const dStr = localStorage.getItem("taskflow_user_dobs");
+          const dobMap = dStr ? JSON.parse(dStr) : {};
+          dobMap[updatedUser.email.toLowerCase()] = {
+            dob: finalDob,
+            isLocked: isDobNowLocked,
+          };
+          localStorage.setItem("taskflow_user_dobs", JSON.stringify(dobMap));
+        } catch {}
+      }
+
+      // 3. Cập nhật từ điển số điện thoại taskflow_user_phones
       if (finalPhone) {
         try {
           const pStr = localStorage.getItem("taskflow_user_phones");
@@ -251,7 +367,7 @@ export default function UserProfilePage() {
         } catch {}
       }
 
-      // 3. Cập nhật taskflow_users (tự động thêm mới nếu chưa có trong danh sách)
+      // 4. Cập nhật taskflow_users
       try {
         const usersStr = localStorage.getItem("taskflow_users");
         let users = [];
@@ -264,6 +380,8 @@ export default function UserProfilePage() {
         if (idx !== -1) {
           users[idx].fullName = updatedUser.fullName;
           users[idx].phone = updatedUser.phone;
+          users[idx].dob = updatedUser.dob;
+          users[idx].isDobLocked = updatedUser.isDobLocked;
           users[idx].avatar = updatedUser.avatar;
           users[idx].lastAvatarChangedDate = updatedUser.lastAvatarChangedDate;
           users[idx].lastNameChangedDate = updatedUser.lastNameChangedDate;
@@ -272,6 +390,8 @@ export default function UserProfilePage() {
             fullName: updatedUser.fullName,
             email: updatedUser.email,
             phone: updatedUser.phone,
+            dob: updatedUser.dob,
+            isDobLocked: updatedUser.isDobLocked,
             avatar: updatedUser.avatar,
             role: updatedUser.role || "user",
             lastAvatarChangedDate: updatedUser.lastAvatarChangedDate,
@@ -282,7 +402,7 @@ export default function UserProfilePage() {
         localStorage.setItem("taskflow_users", JSON.stringify(users));
       } catch {}
 
-      // 4. Cập nhật taskflow_members_list đồng bộ số điện thoại sang Admin
+      // 5. Cập nhật taskflow_members_list đồng bộ số điện thoại & ngày sinh sang Admin
       try {
         const membersStr = localStorage.getItem("taskflow_members_list");
         let members = membersStr ? JSON.parse(membersStr) : [];
@@ -292,87 +412,160 @@ export default function UserProfilePage() {
         if (mIdx !== -1) {
           members[mIdx].name = updatedUser.fullName;
           members[mIdx].initials = getInitials(updatedUser.fullName);
-          members[mIdx].phone = updatedUser.phone; // Đồng bộ số điện thoại sang admin
+          members[mIdx].phone = updatedUser.phone;
+          members[mIdx].dob = updatedUser.dob;
         } else {
           members.push({
             name: updatedUser.fullName,
             initials: getInitials(updatedUser.fullName),
             email: updatedUser.email,
             phone: updatedUser.phone,
+            dob: updatedUser.dob,
             admin: updatedUser.role === "admin",
             tasks: 0,
             joined: "Tham gia gần đây",
-            color: "bg-teal-100 text-teal-700",
+            color: "bg-indigo-100 text-main",
           });
         }
         localStorage.setItem("taskflow_members_list", JSON.stringify(members));
       } catch {}
 
+      // Phát sự kiện cập nhật profile để Header và các component cập nhật tức thì (0ms latency)
+      window.dispatchEvent(
+        new CustomEvent("taskflow_profile_updated", {
+          detail: {
+            fullName: updatedUser.fullName,
+            email: updatedUser.email,
+            avatar: updatedUser.avatar,
+            phone: updatedUser.phone,
+            dob: updatedUser.dob,
+          },
+        })
+      );
+      window.dispatchEvent(new Event("taskflow_members_updated"));
+
       setCurrentUser(updatedUser);
       setNewAvatarSelected(null);
       setSuccessMsg("✓ Cập nhật thông tin cá nhân thành công!");
       setShowSuccessModal(true);
-
-      // Bắn sự kiện kèm payload detail để Header cập nhật avatar và tên ngay lập tức
-      window.dispatchEvent(
-        new CustomEvent("taskflow_profile_updated", { detail: updatedUser })
-      );
     } catch {
-      setErrorMsg("Đã xảy ra lỗi khi lưu thông tin. Vui lòng thử lại!");
-      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+      setErrorMsg("Có lỗi xảy ra khi lưu thông tin. Vui lòng thử lại!");
     } finally {
       setIsSaving(false);
     }
   };
 
+  // Tính toán các ngày cho lịch (Calendar)
+  const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const firstDayOfWeek = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Thứ 2 = 0, CN = 6
+  const prevMonthDaysCount = new Date(calYear, calMonth, 0).getDate();
+
+  const prevDays = Array.from(
+    { length: firstDayOfWeek },
+    (_, i) => prevMonthDaysCount - firstDayOfWeek + 1 + i
+  );
+  const currentDays = Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1);
+  const totalCells = firstDayOfWeek + daysInCurrentMonth;
+  const nextDaysCount = (7 - (totalCells % 7)) % 7;
+  const nextDays = Array.from({ length: nextDaysCount }, (_, i) => i + 1);
+
+  // Chọn ngày trên lịch
+  const handleSelectDay = (d: number) => {
+    const formattedDay = String(d).padStart(2, "0");
+    const formattedMonth = String(calMonth + 1).padStart(2, "0");
+    const formattedYear = String(calYear);
+
+    setDayVal(formattedDay);
+    setMonthVal(formattedMonth);
+    setYearVal(formattedYear);
+    setShowCalendar(false);
+  };
+
+  const handlePrevMonth = () => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear((prev) => prev - 1);
+    } else {
+      setCalMonth((prev) => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear((prev) => prev + 1);
+    } else {
+      setCalMonth((prev) => prev + 1);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-[13px] text-slate-800 pb-16">
-      <div className="mx-auto max-w-[860px]">
+    <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8 text-slate-800">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* Breadcrumb & Tiêu đề */}
-        <div className="mb-6 flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
             <Link href="/user/task/list" className="hover:text-main transition">
               Không gian làm việc
             </Link>
-            <LuChevronRight size={13} />
-            <span className="text-slate-600 font-medium">Hồ sơ cá nhân</span>
+            <LuChevronRight size={14} />
+            <span className="text-slate-700">Hồ sơ cá nhân</span>
           </div>
-          <h1 className="text-[26px] font-bold text-slate-900 tracking-tight">
-            Thông tin cá nhân
-          </h1>
-          <p className="text-slate-500 text-xs">
-            Quản lý thông tin tài khoản, ảnh đại diện và hồ sơ thành viên trong hệ thống TaskFlow.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-1">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                Thông tin cá nhân
+              </h1>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Quản lý thông tin tài khoản, ảnh đại diện và hồ sơ định danh của bạn.
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Thông báo Thành công & Thất bại */}
-        {successMsg && (
-          <div className="mb-5 flex items-center gap-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-800 text-xs font-medium shadow-xs animate-in fade-in">
-            <div className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
+        {/* Thông báo lỗi & thành công ở đầu trang */}
         {errorMsg && (
-          <div className="mb-5 flex items-center gap-2.5 rounded-2xl bg-red-50 border border-red-200 p-4 text-red-700 text-xs font-medium shadow-xs animate-in fade-in">
-            <LuShieldAlert size={16} className="text-red-600 shrink-0" />
-            <span>{errorMsg}</span>
+          <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-medium flex items-center justify-between gap-2 shadow-xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-2.5">
+              <LuShieldAlert size={18} className="shrink-0 text-red-500" />
+              <span>{errorMsg}</span>
+            </div>
+            <button
+              onClick={() => setErrorMsg(null)}
+              className="text-red-400 hover:text-red-700 p-1 cursor-pointer"
+            >
+              <LuX size={16} />
+            </button>
           </div>
         )}
 
-        {/* Khung chính của Form thông tin */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* 1. KHU VỰC ẢNH ĐẠI DIỆN */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-            <h2 className="text-sm font-bold text-slate-800 mb-1">Ảnh đại diện</h2>
-            <p className="text-xs text-slate-400 mb-5">
-              Hỗ trợ định dạng .PNG, .JPG hoặc .JPEG (Quy định: Thay đổi tối đa 1 lần / ngày).
-            </p>
+        {successMsg && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium flex items-center justify-between gap-2 shadow-xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-2.5">
+              <LuCheck size={18} className="shrink-0 text-emerald-600" />
+              <span>{successMsg}</span>
+            </div>
+            <button
+              onClick={() => setSuccessMsg(null)}
+              className="text-emerald-400 hover:text-emerald-700 p-1 cursor-pointer"
+            >
+              <LuX size={16} />
+            </button>
+          </div>
+        )}
 
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              {/* Khung tròn ảnh đại diện */}
-              <div className="relative group">
-                <div className="h-[96px] w-[96px] rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 text-white font-bold text-[32px] grid place-items-center shadow-md ring-4 ring-pink-100 overflow-hidden">
+        {/* Form chỉnh sửa */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Card 1: Ảnh đại diện & Thông tin cơ bản */}
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs">
+            <h2 className="text-base font-bold text-slate-800 pb-4 border-b border-slate-100">
+              Ảnh đại diện & Định danh
+            </h2>
+
+            <div className="mt-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+              {/* Vùng Avatar */}
+              <div className="relative group shrink-0">
+                <div className="h-28 w-28 rounded-full ring-4 ring-slate-100 shadow-md bg-gradient-to-tr from-pink-500 to-rose-400 text-white font-bold text-3xl grid place-items-center overflow-hidden">
                   {avatarPreview ? (
                     <img
                       src={avatarPreview}
@@ -384,118 +577,109 @@ export default function UserProfilePage() {
                   )}
                 </div>
 
-                {/* Nút bấm tải ảnh đè lên */}
-                {!isAvatarLockedToday && (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-0 right-0 p-2 rounded-full bg-main text-white shadow-md hover:bg-main/90 transition cursor-pointer"
-                    title="Chọn ảnh mới"
-                  >
-                    <LuCamera size={15} />
-                  </button>
-                )}
+                {/* Nút bấm tải ảnh */}
+                <button
+                  type="button"
+                  disabled={isAvatarLockedToday}
+                  onClick={() => fileInputRef.current?.click()}
+                  title={
+                    isAvatarLockedToday
+                      ? "Đã đổi hôm nay (Tối đa 1 lần/ngày)"
+                      : "Thay đổi ảnh đại diện (.PNG, .JPG, .JPEG)"
+                  }
+                  className={`absolute bottom-0 right-0 p-2.5 rounded-full text-white shadow-lg transition-transform ${
+                    isAvatarLockedToday
+                      ? "bg-slate-400 cursor-not-allowed opacity-80"
+                      : "bg-main hover:scale-105 cursor-pointer hover:bg-main/90"
+                  }`}
+                >
+                  <LuCamera size={16} />
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".png, .jpg, .jpeg, image/png, image/jpeg"
+                  className="hidden"
+                  onChange={handleAvatarFileChange}
+                />
               </div>
 
-              {/* Hướng dẫn và Nút chọn ảnh */}
-              <div className="flex-1 flex flex-col gap-2.5 text-center sm:text-left">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept=".png,.jpg,.jpeg,image/png,image/jpeg"
-                  onChange={handleAvatarFileChange}
-                  className="hidden"
-                />
-
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-                  <button
-                    type="button"
-                    disabled={isAvatarLockedToday}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
-                      isAvatarLockedToday
-                        ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                        : "bg-indigo-50 text-main border border-indigo-200 hover:bg-indigo-100 cursor-pointer"
-                    }`}
-                  >
-                    {isAvatarLockedToday ? "🔒 Đã đổi hôm nay" : "Tải ảnh mới (.PNG, .JPG, .JPEG)"}
-                  </button>
-
-                  {newAvatarSelected && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAvatarPreview(currentUser.avatar || null);
-                        setNewAvatarSelected(null);
-                      }}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition cursor-pointer"
-                    >
-                      Khôi phục
-                    </button>
+              {/* Hướng dẫn quy định ảnh đại diện */}
+              <div className="flex-1 space-y-2 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <h3 className="font-bold text-slate-800 text-base">Ảnh hồ sơ thành viên</h3>
+                  {isAvatarLockedToday ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      🔒 Đã đổi hôm nay (Khóa đến ngày mai)
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Có thể đổi ảnh (1 lần/ngày)
+                    </span>
                   )}
                 </div>
-
-                {/* Trạng thái quy định 1 ngày 1 lần */}
-                {isAvatarLockedToday ? (
-                  <p className="text-[11.5px] text-amber-600 font-medium flex items-center gap-1 justify-center sm:justify-start">
-                    <LuLock size={13} />
-                    Bạn đã thay đổi ảnh đại diện hôm nay ({todayStr}). Có thể đổi lại vào ngày mai.
-                  </p>
-                ) : (
-                  <p className="text-[11.5px] text-slate-400">
-                    💡 Bạn có quyền thay đổi ảnh đại diện hôm nay. Sau khi xác nhận, ảnh sẽ khóa đến 00:00 ngày mai.
-                  </p>
-                )}
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Chỉ chấp nhận các định dạng ảnh: <strong>.PNG</strong>, <strong>.JPG</strong>, hoặc <strong>.JPEG</strong>. Dung lượng tối đa: <strong>3MB</strong>.
+                </p>
+                <div className="pt-1 flex flex-wrap gap-2 text-[11px] text-slate-400 justify-center sm:justify-start">
+                  <span>• Cập nhật có hiệu lực ngay lập tức trên thanh Header.</span>
+                </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* 2. KHU VỰC THÔNG TIN CÁ NHÂN */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col gap-5">
-            <h2 className="text-sm font-bold text-slate-800 pb-2 border-b border-slate-100">
+          {/* Card 2: Thông tin chi tiết */}
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-xs space-y-6">
+            <h2 className="text-base font-bold text-slate-800 pb-4 border-b border-slate-100">
               Chi tiết tài khoản & Thông tin định danh
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Họ và tên (Có thể đổi 1 lần/ngày) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Họ và tên */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700">
                     Họ và tên *
                   </label>
                   {isNameLockedToday && (
-                    <span className="text-[11px] text-amber-600 font-medium flex items-center gap-1">
+                    <span className="text-[11px] text-amber-600 font-semibold flex items-center gap-1">
                       <LuLock size={12} />
                       Đã đổi hôm nay
                     </span>
                   )}
                 </div>
-
                 <div className="relative">
                   <input
                     type="text"
                     required
                     disabled={isNameLockedToday}
                     value={nameInput}
-                    onChange={(e) => setNameInput(e.target.value)}
-                    placeholder="Nguyễn Văn A"
+                    onChange={(e) => {
+                      setNameInput(e.target.value);
+                      if (errorMsg) setErrorMsg(null);
+                    }}
+                    placeholder="Nhập họ và tên đầy đủ..."
                     className={`w-full rounded-xl border py-2.5 pl-9 pr-3 text-sm outline-none transition ${
                       isNameLockedToday
-                        ? "border-slate-200 bg-slate-50/80 text-slate-500 cursor-not-allowed"
+                        ? "border-slate-200 bg-slate-100/80 text-slate-500 cursor-not-allowed"
                         : "border-slate-200 bg-white text-slate-800 focus:border-main focus:ring-1 focus:ring-main"
                     }`}
                   />
                   <LuUser className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 </div>
-
                 <p className="text-[11px] text-slate-400">
-                  {isNameLockedToday
-                    ? `🔒 Đã cập nhật hôm nay (${todayStr}). Bạn chỉ có thể đổi lại sau 00:00 ngày mai.`
-                    : "💡 Có thể thay đổi họ tên (Quy định tối đa 1 lần / ngày)."}
+                  {isNameLockedToday ? (
+                    <span className="text-amber-600">
+                      🔒 Bạn đã đổi họ tên hôm nay. Quy định tối đa 1 lần / ngày.
+                    </span>
+                  ) : (
+                    "💡 Có thể thay đổi họ tên (Quy định tối đa 1 lần / ngày)."
+                  )}
                 </p>
               </div>
 
-              {/* Địa chỉ Gmail (CỐ ĐỊNH, KHÔNG THỂ SỬA) */}
+              {/* Email (CỐ ĐỊNH, KHÔNG ĐỔI) */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700">
@@ -506,7 +690,6 @@ export default function UserProfilePage() {
                     Cố định
                   </span>
                 </div>
-
                 <div className="relative">
                   <input
                     type="email"
@@ -518,38 +701,268 @@ export default function UserProfilePage() {
                   <LuMail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                   <LuLock className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                 </div>
-
                 <p className="text-[11px] text-slate-400">
                   🔒 Địa chỉ Gmail định danh tài khoản, không thể thay đổi theo chính sách bảo mật.
                 </p>
               </div>
 
-              {/* Ngày / tháng / năm sinh (CỐ ĐỊNH, KHÔNG THỂ SỬA) */}
+              {/* Ngày / tháng / năm sinh (CHỈ ĐẶT 1 LẦN, LIA CHUỘT RA LỊCH, GÕ THÁNG/NĂM TỰ CHUYỂN LỊCH) */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700">
                     Ngày / tháng / năm sinh
                   </label>
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
-                    <LuLock size={12} />
-                    Cố định
-                  </span>
+                  {isDobLockedForever ? (
+                    <span className="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold border border-emerald-200 flex items-center gap-1">
+                      <LuShieldCheck size={12} />
+                      Đã xác thực
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-amber-600 font-semibold">
+                      Chỉ đặt 1 lần duy nhất!
+                    </span>
+                  )}
                 </div>
 
-                <div className="relative">
-                  <input
-                    type="text"
-                    disabled
-                    readOnly
-                    value={currentUser.dob || "27/04/2005"}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-100/80 py-2.5 pl-9 pr-8 text-sm text-slate-500 cursor-not-allowed select-none"
-                  />
-                  <LuCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <LuLock className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                {/* Khung nhập Ngày/Tháng/Năm & Container Lịch */}
+                <div
+                  ref={calendarContainerRef}
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (!isDobLockedForever) setShowCalendar(true);
+                  }}
+                >
+                  <div
+                    className={`w-full rounded-xl border flex items-center justify-between px-3 py-2 text-sm transition ${
+                      isDobLockedForever
+                        ? "border-slate-200 bg-slate-100/80 text-slate-500 cursor-not-allowed select-none"
+                        : "border-slate-200 bg-white text-slate-800 focus-within:border-main focus-within:ring-2 focus-within:ring-main/20"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <LuCalendar
+                        className={isDobLockedForever ? "text-slate-400" : "text-main"}
+                        size={17}
+                      />
+
+                      {isDobLockedForever ? (
+                        <span className="font-mono text-slate-600 text-sm font-medium">
+                          {currentUser.dob || "Chưa thiết lập"}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-1 font-mono text-sm text-slate-700">
+                          {/* Ô nhập Ngày */}
+                          <input
+                            ref={dayRef}
+                            type="text"
+                            maxLength={2}
+                            value={dayVal}
+                            placeholder="DD"
+                            onFocus={() => setShowCalendar(true)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "");
+                              setDayVal(val);
+                              if (val.length === 2 && monthRef.current) {
+                                monthRef.current.focus();
+                              }
+                            }}
+                            className="w-7 text-center outline-none bg-transparent placeholder:text-slate-300 font-semibold"
+                          />
+                          <span className="text-slate-300">/</span>
+
+                          {/* Ô nhập Tháng (Tự động chuyển lịch sang tháng tương ứng) */}
+                          <input
+                            ref={monthRef}
+                            type="text"
+                            maxLength={2}
+                            value={monthVal}
+                            placeholder="MM"
+                            onFocus={() => setShowCalendar(true)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "");
+                              setMonthVal(val);
+                              // Yêu cầu 1: Khi gõ tháng (ví dụ 05), lịch tự động chuyển sang tháng 5
+                              if (val) {
+                                const m = parseInt(val, 10);
+                                if (m >= 1 && m <= 12) {
+                                  setCalMonth(m - 1);
+                                }
+                              }
+                              if (val.length === 2 && yearRef.current) {
+                                yearRef.current.focus();
+                              }
+                            }}
+                            className="w-7 text-center outline-none bg-transparent placeholder:text-slate-300 font-semibold text-main"
+                          />
+                          <span className="text-slate-300">/</span>
+
+                          {/* Ô nhập Năm (Tự động chuyển lịch sang năm tương ứng) */}
+                          <input
+                            ref={yearRef}
+                            type="text"
+                            maxLength={4}
+                            value={yearVal}
+                            placeholder="YYYY"
+                            onFocus={() => setShowCalendar(true)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "");
+                              setYearVal(val);
+                              // Yêu cầu 1: Khi gõ năm (ví dụ 2000), lịch tự động chuyển sang năm 2000
+                              if (val.length === 4) {
+                                const y = parseInt(val, 10);
+                                if (y >= 1900 && y <= 2099) {
+                                  setCalYear(y);
+                                }
+                              }
+                            }}
+                            className="w-12 text-center outline-none bg-transparent placeholder:text-slate-300 font-semibold"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {isDobLockedForever ? (
+                      <LuLock className="text-slate-400" size={14} />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowCalendar((prev) => !prev)}
+                        className="text-xs text-main font-semibold hover:underline cursor-pointer px-1 py-0.5"
+                      >
+                        {showCalendar ? "Đóng" : "Chọn lịch"}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Lịch (Calendar) */}
+                  {showCalendar && !isDobLockedForever && (
+                    <div className="absolute left-0 top-full mt-2 z-40 w-full sm:w-[320px] rounded-2xl bg-white p-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+                      {/* Calendar Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <button
+                          type="button"
+                          onClick={handlePrevMonth}
+                          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+                        >
+                          <LuChevronLeft size={16} />
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          {/* Dropdown chọn Tháng */}
+                          <select
+                            value={calMonth}
+                            onChange={(e) => setCalMonth(parseInt(e.target.value, 10))}
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 bg-white outline-none cursor-pointer"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => (
+                              <option key={i} value={i}>
+                                Tháng {i + 1}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Dropdown chọn Năm */}
+                          <select
+                            value={calYear}
+                            onChange={(e) => setCalYear(parseInt(e.target.value, 10))}
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 bg-white outline-none cursor-pointer"
+                          >
+                            {Array.from({ length: 90 }, (_, i) => 2026 - i).map((y) => (
+                              <option key={y} value={y}>
+                                {y}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleNextMonth}
+                          className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+                        >
+                          <LuChevronRight size={16} />
+                        </button>
+                      </div>
+
+                      {/* Thứ trong tuần */}
+                      <div className="grid grid-cols-7 gap-1 text-center py-2 text-[11px] font-semibold text-slate-400">
+                        <span>T2</span>
+                        <span>T3</span>
+                        <span>T4</span>
+                        <span>T5</span>
+                        <span>T6</span>
+                        <span>T7</span>
+                        <span className="text-red-500">CN</span>
+                      </div>
+
+                      {/* Lưới các ngày trong tháng */}
+                      <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                        {/* Ngày tháng trước */}
+                        {prevDays.map((d, i) => (
+                          <div
+                            key={`prev-${i}`}
+                            className="py-1.5 text-slate-300 font-mono select-none"
+                          >
+                            {d}
+                          </div>
+                        ))}
+
+                        {/* Ngày tháng hiện tại */}
+                        {currentDays.map((d) => {
+                          const isSelected =
+                            dayVal === String(d).padStart(2, "0") &&
+                            monthVal === String(calMonth + 1).padStart(2, "0") &&
+                            yearVal === String(calYear);
+
+                          return (
+                            <button
+                              key={`cur-${d}`}
+                              type="button"
+                              onClick={() => handleSelectDay(d)}
+                              className={`py-1.5 rounded-lg font-mono font-medium transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-main text-white font-bold shadow-xs"
+                                  : "text-slate-700 hover:bg-indigo-50 hover:text-main"
+                              }`}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+
+                        {/* Ngày tháng sau */}
+                        {nextDays.map((d, i) => (
+                          <div
+                            key={`next-${i}`}
+                            className="py-1.5 text-slate-300 font-mono select-none"
+                          >
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Mẹo: Lia chuột vào khung để mở lịch</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowCalendar(false)}
+                          className="text-main font-semibold hover:underline cursor-pointer"
+                        >
+                          Đóng
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-[11px] text-slate-400">
-                  🔒 Ngày tháng năm sinh cố định theo hồ sơ đăng ký căn cước công dân.
+                  {isDobLockedForever ? (
+                    <span className="text-slate-500 font-medium">
+                      🔒 Ngày tháng năm sinh đã được lưu và khóa bảo mật. Chỉ <strong>Quản trị viên (Admin)</strong> mới có quyền chỉnh sửa.
+                    </span>
+                  ) : (
+                    "⚠️ Lưu ý: Bạn chỉ có thể thiết lập ngày sinh một lần duy nhất. Sau khi bấm xác nhận, ngày sinh sẽ bị khóa vĩnh viễn."
+                  )}
                 </p>
               </div>
 
@@ -613,31 +1026,23 @@ export default function UserProfilePage() {
                     disabled
                     readOnly
                     value={currentUser.address || "TP. Hồ Chí Minh"}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-100/80 py-2.5 pl-9 pr-3 text-sm text-slate-500 cursor-not-allowed"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-100/80 py-2.5 pl-9 pr-3 text-sm text-slate-500 cursor-not-allowed select-none"
                   />
                   <LuMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* 3. NÚT XÁC NHẬN & THÔNG BÁO VỊ TRÍ NÚT */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-            {/* Thông báo kết quả ngay vị trí nút bấm */}
+            {/* Thông báo cập nhật thành công bên dưới form */}
             {successMsg && (
-              <div className="w-full p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
-                <LuCheck className="text-emerald-600 shrink-0 text-base" />
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-medium flex items-center gap-2">
+                <LuCheck size={16} />
                 <span>{successMsg}</span>
               </div>
             )}
-            {errorMsg && (
-              <div className="w-full p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
-                <LuShieldAlert className="text-red-600 shrink-0 text-base" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
 
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <LuInfo size={16} className="text-main shrink-0" />
                 <span>
@@ -646,12 +1051,13 @@ export default function UserProfilePage() {
               </div>
 
               <div className="flex items-center gap-3">
-                <Link
-                  href="/user/task/list"
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+                <button
+                  type="button"
+                  onClick={() => router.push("/user/task/list")}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                 >
                   Quay lại Task
-                </Link>
+                </button>
 
                 <button
                   type="submit"
@@ -684,20 +1090,33 @@ export default function UserProfilePage() {
               <div className="mt-4 w-full rounded-2xl bg-slate-50 p-3.5 border border-slate-200/70 text-left flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 text-white font-bold text-base grid place-items-center shrink-0 overflow-hidden ring-2 ring-pink-100">
                   {currentUser.avatar ? (
-                    <img src={currentUser.avatar} alt={currentUser.fullName} className="h-full w-full object-cover" />
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.fullName}
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <span>{getInitials(currentUser.fullName)}</span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-bold text-slate-800 text-sm truncate">{currentUser.fullName}</div>
+                  <div className="font-bold text-slate-800 text-sm truncate">
+                    {currentUser.fullName}
+                  </div>
                   <div className="text-slate-400 text-xs truncate">{currentUser.email}</div>
-                  {currentUser.phone && (
-                    <div className="text-emerald-700 text-xs font-medium flex items-center gap-1 mt-0.5">
-                      <LuShieldCheck size={13} />
-                      <span>SĐT: {currentUser.phone} (Đã khóa)</span>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {currentUser.dob && (
+                      <div className="text-slate-600 text-[11px] font-medium flex items-center gap-1 font-mono">
+                        <span>🎂</span> {currentUser.dob}
+                      </div>
+                    )}
+                    {currentUser.phone && (
+                      <div className="text-emerald-700 text-[11px] font-medium flex items-center gap-1">
+                        <LuShieldCheck size={13} />
+                        <span>SĐT: {currentUser.phone} (Đã khóa)</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -709,12 +1128,16 @@ export default function UserProfilePage() {
                 >
                   Ở lại trang
                 </button>
-                <Link
-                  href="/user/task/list"
-                  className="flex-1 py-2.5 rounded-xl bg-main text-white text-xs font-bold hover:bg-main/90 transition text-center shadow-sm"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    router.push("/user/task/list");
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-main text-white text-xs font-bold hover:bg-main/90 transition text-center shadow-sm cursor-pointer"
                 >
                   Về trang Task
-                </Link>
+                </button>
               </div>
             </div>
           </div>
