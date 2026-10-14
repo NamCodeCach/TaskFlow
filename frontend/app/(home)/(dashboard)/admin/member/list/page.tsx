@@ -1,5 +1,7 @@
 "use client";
 
+import { apiPost } from "@/lib/api";
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BiChevronDown, BiSearch } from "react-icons/bi";
@@ -349,7 +351,7 @@ export default function ThanhVien() {
   };
 
   // 1. Thêm thành viên mới
-  const handleCreateMember = (e: React.FormEvent) => {
+  const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
 
@@ -374,6 +376,30 @@ export default function ThanhVien() {
       setCreateError("Email này đã tồn tại trong danh sách thành viên!");
       return;
     }
+
+    // ─── Gọi API backend để lưu vào SQL Server ────────────────
+    try {
+      await apiPost("/users", {
+        fullName: trimmedName,
+        email: trimmedEmail,
+        password: newPassword,
+        role: newRole,
+      });
+    } catch (apiErr: any) {
+      const isNetworkErr =
+        apiErr?.message?.includes("fetch") ||
+        apiErr?.message?.includes("Network") ||
+        apiErr?.message?.includes("Failed") ||
+        apiErr?.message?.includes("ERR_CONNECTION");
+
+      if (!isNetworkErr) {
+        // Lỗi thực sự từ backend (VD: email đã tồn tại trong DB)
+        setCreateError(apiErr.message);
+        return;
+      }
+      // Network error → backend chưa chạy → vẫn tiếp tục lưu localStorage
+    }
+    // ──────────────────────────────────────────────────────────
 
     const newMemberObj: MemberItem = {
       name: trimmedName,
@@ -428,6 +454,7 @@ export default function ThanhVien() {
     setToast(`✓ Đã cấp tài khoản thành công cho "${trimmedName}"!`);
     window.dispatchEvent(new Event("taskflow_members_updated"));
   };
+
 
   // Mở modal Xem thông tin thành viên (Read-only)
   const handleStartView = (member: MemberItem) => {

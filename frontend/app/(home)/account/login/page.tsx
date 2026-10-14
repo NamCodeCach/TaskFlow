@@ -1,5 +1,6 @@
 "use client";
 
+import { apiPost } from "@/lib/api";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -96,7 +97,7 @@ export default function LoginPage() {
   }, [isLocked, lockUntil]);
 
   // Xử lý đăng nhập
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -122,6 +123,65 @@ export default function LoginPage() {
       return;
     }
 
+    // =========================================================================
+    // BƯỚC 1: Thử đăng nhập qua API backend (Spring Boot + SQL Server)
+    // =========================================================================
+    try {
+      const user = await apiPost<UserAccount>("/users/login", {
+        email: trimmedEmail,
+        password: inputPassword,
+      });
+
+      // Đăng nhập backend thành công → reset đếm sai
+      localStorage.removeItem("taskflow_lock_until");
+      localStorage.removeItem("taskflow_failed_attempts");
+
+      if (user.mustChangePassword) {
+        setPendingUser(user);
+        setFirstTimeNewPass("");
+        setFirstTimeConfirmPass("");
+        setFirstTimeError(null);
+        setShowFirstTimeModal(true);
+        return;
+      }
+
+      completeSuccessfulLogin(user);
+      return;
+    } catch (apiErr: any) {
+      // Nếu lỗi là "network error" / "Failed to fetch" → backend chưa chạy → fallback localStorage
+      const isNetworkErr =
+        apiErr?.message?.includes("fetch") ||
+        apiErr?.message?.includes("Network") ||
+        apiErr?.message?.includes("Failed") ||
+        apiErr?.message?.includes("ERR_CONNECTION");
+
+      if (!isNetworkErr) {
+        // Lỗi từ backend (sai mật khẩu, không tồn tại...)
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
+        localStorage.setItem("taskflow_failed_attempts", nextAttempts.toString());
+
+        if (nextAttempts >= 5) {
+          const lockTime = Date.now() + 60 * 1000;
+          setLockUntil(lockTime);
+          setIsLocked(true);
+          setCountdown(60);
+          localStorage.setItem("taskflow_lock_until", lockTime.toString());
+          setErrorMessage("⚠️ Bạn đã nhập sai mật khẩu 5 lần! Tài khoản tạm thời bị khóa trong 1 phút (60 giây).");
+        } else {
+          const remainingTries = 5 - nextAttempts;
+          setErrorMessage(
+            `${apiErr.message} (Còn ${remainingTries} lần thử)`
+          );
+        }
+        return;
+      }
+      // Nếu là network error → tiếp tục fallback sang localStorage bên dưới
+    }
+
+    // =========================================================================
+    // BƯỚC 2: Fallback – đọc từ localStorage khi backend chưa chạy
+    // =========================================================================
     // 1. Tài khoản mặc định demo hệ thống (Chỉ 1 Quản trị viên duy nhất)
     const defaultAccounts: UserAccount[] = [
       {
@@ -231,6 +291,7 @@ export default function LoginPage() {
     // Nếu không yêu cầu đổi mật khẩu -> Cho vào hệ thống bình thường
     completeSuccessfulLogin(user);
   };
+
 
   // Hoàn tất lưu phiên đăng nhập và chuyển hướng
   const completeSuccessfulLogin = (user: UserAccount) => {
