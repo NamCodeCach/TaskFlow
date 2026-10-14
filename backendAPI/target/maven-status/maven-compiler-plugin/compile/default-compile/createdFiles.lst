@@ -1,0 +1,17 @@
+com\network\kanban\repository\TaskRepository.class
+com\network\kanban\service\TaskService.class
+com\network\kanban\config\CorsConfig.class
+com\network\kanban\controller\TaskRestController.class
+com\network\kanban\model\Task.class
+com\network\kanban\dto\TaskSocketEvent.class
+com\network\kanban\model\TaskLog$TaskLogBuilder.class
+com\network\kanban\model\Task$TaskBuilder.class
+com\network\kanban\model\TaskLog.class
+com\network\kanban\repository\TaskLogRepository.class
+com\network\kanban\controller\TaskSocketController.class
+com\network\kanban\dto\TaskProgressMessage.class
+com\network\kanban\config\WebSocketConfig.class
+com\network\kanban\KanbanApplication.class
+com\network\kanban\dto\ErrorMessage.class
+com\network\kanban\dto\TaskStatusUpdateMessage.class
+com\network\kanban\dto\TaskAssignMessage.class

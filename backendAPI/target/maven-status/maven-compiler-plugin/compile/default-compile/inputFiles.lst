@@ -1,0 +1,15 @@
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\controller\TaskSocketController.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\repository\TaskLogRepository.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\model\Task.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\dto\TaskStatusUpdateMessage.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\dto\TaskAssignMessage.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\KanbanApplication.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\dto\TaskProgressMessage.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\dto\TaskSocketEvent.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\config\WebSocketConfig.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\service\TaskService.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\config\CorsConfig.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\dto\ErrorMessage.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\model\TaskLog.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\repository\TaskRepository.java
+D:\DoanLTmang\backendAPI\src\main\java\com\network\kanban\controller\TaskRestController.java
