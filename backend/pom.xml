@@ -19,7 +19,8 @@
     <description>TaskFlow – Quản lý công việc nhóm</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
+        <lombok.version>1.18.34</lombok.version>
     </properties>
 
     <dependencies>
@@ -36,12 +37,6 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- WebSocket (giữ lại tính năng real-time cũ) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-
         <!-- Microsoft SQL Server Driver – bao gồm Windows Auth (integratedSecurity=true) -->
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
@@ -54,7 +49,8 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <version>1.18.32</version> <!-- Bản tương thích tốt với Java 21 -->
+            <scope>provided</scope>
         </dependency>
 
         <!-- Validation -->
@@ -72,8 +68,24 @@
 
     </dependencies>
 
-    <build>
+      <build>
         <plugins>
+            <!-- 1. BỔ SUNG: Cấu hình Compiler nạp Lombok để sinh Getter/Setter/Log trên Java 21 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.32</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <!-- 2. Plugin Spring Boot gốc của bạn (giữ nguyên cấu hình DLL và RAM) -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -84,8 +96,8 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
-                    <!-- Giới hạn RAM cho JVM khi RAM máy thấp -->
-                    <jvmArguments>-Xms128m -Xmx256m</jvmArguments>
+                    <!-- Giới hạn RAM và nạp auth DLL cho SQL Server Windows Authentication -->
+                    <jvmArguments>-Djava.library.path="${project.basedir}/auth-dll" -Xms128m -Xmx256m</jvmArguments>
                 </configuration>
             </plugin>
         </plugins>
