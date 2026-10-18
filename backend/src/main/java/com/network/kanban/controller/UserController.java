@@ -20,10 +20,22 @@ public class UserController {
     @PostMapping("/account/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
         try {
-            User user = userService.login(req.getEmail(), req.getPassword());
+            // Truyền email, password và role vào Service kiểm tra
+            User user = userService.login(req.getEmail(), req.getPassword(), req.getRole());
             return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", user));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            // Nếu sai password hoặc sai role -> Trả về code = "error" để chặn luôn
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/account/{email}")
+    public ResponseEntity<?> getAccount(@PathVariable String email) {
+        try {
+            User user = userService.getUserByEmail(email);
+            return ResponseEntity.ok(ApiResponse.success("Thành công", user));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
         }
     }
 }
