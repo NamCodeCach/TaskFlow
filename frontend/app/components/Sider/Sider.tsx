@@ -31,7 +31,7 @@ export const siderItemsAdmin: SiderItem[] = [
   { Icon: LuTable, title: "Xuất Excel", pathname: "/admin/export/exel" },
 ];
 
-// Menu dành riêng cho User (Thành viên) - Hoàn toàn không dính menu Admin
+// Menu dành riêng cho User (Thành viên)
 export const siderItemsUser: SiderItem[] = [
   { Icon: LuLayoutDashboard, title: "Task của tôi", pathname: "/user/task/list" },
   { Icon: LuFolderCheck, title: "Bài đã nộp", pathname: "/user/task/submitted" },
@@ -44,29 +44,56 @@ export const Sider = () => {
   const [role, setRole] = useState<"user" | "admin">("user");
   const [currentUserRole, setCurrentUserRole] = useState<string>("user");
 
-  // Tự động nhận diện phân quyền dựa theo URL và thông tin đăng nhập
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedUserStr = localStorage.getItem("taskflow_current_user");
-      let userRole: "user" | "admin" = "user";
-      if (savedUserStr) {
-        try {
-          const u = JSON.parse(savedUserStr);
-          if (u.role === "admin") userRole = "admin";
-        } catch {}
-      }
-      setCurrentUserRole(userRole);
+      console.log(">> [Sider] Dữ liệu trong localStorage:", savedUserStr);
 
-      // Nếu đang ở các đường dẫn /admin/... thì kích hoạt menu admin
-      if (currentPath.startsWith("/admin")) {
-        setRole("admin");
-      } else {
-        setRole("user");
+      if (!savedUserStr) {
+        console.warn(">> [Sider] Chưa có taskflow_current_user trong localStorage!");
+        return;
+      }
+
+      try {
+        const u = JSON.parse(savedUserStr);
+
+        // 1. NẠP NGAY ROLE TỪ LOCALSTORAGE ĐỂ RENDER TỨC THÌ (Không bị chậm)
+        if (u.role === "admin") {
+          setRole("admin");
+          setCurrentUserRole("admin");
+        } else {
+          setRole("user");
+          setCurrentUserRole("user");
+        }
+
+        if (!u.email) return;
+
+        // 2. GỌI API BACKEND ĐỂ ĐỒNG BỘ VÀ XÁC THỰC LẠI
+        fetch(`http://localhost:8080/api/users/account/${encodeURIComponent(u.email)}`, {
+          credentials: "include",
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("API trả về lỗi HTTP: " + res.status);
+            return res.json();
+          })
+          .then((data) => {
+            console.log(">> [Sider] Dữ liệu từ API Backend:", data);
+            if (data.code === "success" && data.data?.role) {
+              const actualRole = data.data.role.toLowerCase() === "admin" ? "admin" : "user";
+              setRole(actualRole);
+              setCurrentUserRole(actualRole);
+            }
+          })
+          .catch((err) => {
+            console.error(">> [Sider] Lỗi khi gọi API kiểm tra role:", err);
+          });
+      } catch (e) {
+        console.error(">> [Sider] Lỗi parse JSON user:", e);
       }
     }
-  }, [currentPath]);
+  }, []);
 
-  const sider = role === "admin" ? siderItemsAdmin : siderItemsUser;
+  const sider = currentUserRole === "admin" ? siderItemsAdmin : siderItemsUser;
 
   // Đăng xuất
   const handleLogout = () => {
@@ -77,7 +104,7 @@ export const Sider = () => {
   return (
     <>
       {/* Sider bar */}
-      <aside className="fixed left-[0px] top-[0px] z-[50] hidden h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF] lg:flex">
+      <aside className="fixed left-[0px] top-[0px] z-[50] flex h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF]">
         {/* Logo */}
         <div className="flex items-center gap-[12px] p-[24px]">
           <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[12px] bg-[#4F46E5] text-[18px] text-[#FFFFFF]">
@@ -119,35 +146,6 @@ export const Sider = () => {
             })}
           </ul>
         </nav>
-
-        {/* Cho phép tài khoản Quản trị viên (Admin) chuyển đổi linh hoạt chế độ xem */}
-        {currentUserRole === "admin" && (
-          <div className="px-4 py-2 border-t border-slate-100">
-            {role === "admin" ? (
-              <Link
-                href="/user/task/list"
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-main transition"
-              >
-                <span className="flex items-center gap-1.5">
-                  <LuShieldAlert size={14} />
-                  Xem với vai trò User
-                </span>
-                <span>⇄</span>
-              </Link>
-            ) : (
-              <Link
-                href="/admin/member/list"
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-main hover:bg-indigo-100 transition"
-              >
-                <span className="flex items-center gap-1.5">
-                  <LuShieldAlert size={14} />
-                  Quay lại Admin
-                </span>
-                <span>👑</span>
-              </Link>
-            )}
-          </div>
-        )}
 
         {/* Đăng xuất */}
         <div className="border-t-[1px] border-[#E2E8F0] p-[16px]">
