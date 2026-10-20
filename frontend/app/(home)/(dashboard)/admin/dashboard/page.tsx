@@ -7,7 +7,7 @@ import { MdChecklist } from "react-icons/md";
 import { LuSquarePen, LuEllipsis, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import ReactDOM, { createPortal } from "react-dom";
 import { useState } from "react";
-import { IoIosSend } from "react-icons/io";
+import { IoIosSend, IoMdClose } from "react-icons/io";
 import { IoClose } from "react-icons/io5";
 
 export default function Page() {
@@ -43,23 +43,6 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Cần làm */}
-        <div className="rounded-[16px] border-[1px] border-[#E2E8F0] bg-[#FFFFFF] p-[20px] shadow-[0px_4px_16px_0px_#1018280A] w-[276.5px]">
-          <div className="flex items-center justify-between text-[14px] font-medium text-[#475569]">
-            Cần làm
-            <div className="flex h-[36px] w-[36px] items-center justify-center rounded-[10px] bg-[#F1F5F9] text-[18px] text-[#475569]">
-              <MdChecklist />
-            </div>
-          </div>
-
-          <div className="mt-[20px] flex items-end gap-[10px] text-[36px] font-bold leading-[1] text-[#182230]">
-            3
-            <span className="pb-[4px] text-[12px] font-normal leading-[1] text-[#64748B]">
-              1 task khác đã quá hạn
-            </span>
-          </div>
-        </div>
-
         {/* Chờ duyệt */}
         <div className="rounded-[16px] border-[1px] border-[#E2E8F0] bg-[#FFFFFF] p-[20px] shadow-[0px_4px_16px_0px_#1018280A] w-[276.5px]">
           <div className="flex items-center justify-between text-[14px] font-medium text-[#475569]">
@@ -80,16 +63,16 @@ export default function Page() {
         {/* Hoàn thành */}
         <div className="rounded-[16px] border-[1px] border-[#E2E8F0] bg-[#FFFFFF] p-[20px] shadow-[0px_4px_16px_0px_#1018280A] w-[276.5px]">
           <div className="flex items-center justify-between text-[14px] font-medium text-[#475569]">
-            Hoàn thành
-            <div className="flex h-[36px] w-[36px] items-center justify-center rounded-[10px] bg-[#DCFCE7] text-[16px] text-[#16A34A]">
-              <FaCheck />
+            Quá hạn
+            <div className="flex h-[36px] w-[36px] items-center justify-center rounded-[10px] bg-[#ff00002f] text-[16px] text-[red]">
+              <IoMdClose />
             </div>
           </div>
 
-          <div className="mt-[20px] flex items-end gap-[10px] text-[36px] font-bold leading-[1] text-[#182230]">
+          <div className="mt-[20px] flex items-end gap-[10px] text-[36px] font-bold leading-[1] text-[red]">
             2
             <span className="pb-[4px] text-[12px] font-normal leading-[1] text-[#64748B]">
-              25% tổng số task
+              task đã quá hạn nộp
             </span>
           </div>
         </div>
@@ -115,12 +98,13 @@ export default function Page() {
           <div className="flex flex-wrap items-center justify-between gap-[8px] px-[20px] py-[18px]">
             <div className="flex items-center gap-[8px]">
               <h2 className="text-[18px] font-bold text-[#182230]">Danh sách task</h2>
-              <span className="text-[13px] text-[#64748B]">8 task</span>
             </div>
             <span className="text-[13px] font-medium text-[#4F46E5]">Cập nhật vừa xong</span>
           </div>
 
           {/* Bảng */}
+          {/* Chỉ show ra trạng thái đã nộp và quá hạn */}
+
           <div className="w-full overflow-hidden">
             <table className="w-full table-fixed border-collapse text-left">
               <thead>
@@ -137,14 +121,11 @@ export default function Page() {
                   <th className="w-[130px] whitespace-nowrap px-[12px] py-[14px] font-medium">
                     Trạng thái
                   </th>
-                  <th className="w-[80px] whitespace-nowrap px-[12px] py-[14px] font-medium">
-                    Hành động
-                  </th>
                 </tr>
               </thead>
 
               <tbody className="text-[14px] text-[#182230]">
-                {/* 1 */}
+                {/* 1
                 <tr className="border-t-[1px] border-[#E2E8F0]">
                   <td className="px-[20px] py-[12px]">
                     <div className="font-semibold">Thiết kế banner</div>
@@ -176,7 +157,7 @@ export default function Page() {
                       </button>
                     </div>
                   </td>
-                </tr>
+                </tr> */}
 
                 {/* 2 */}
                 <tr className="border-t-[1px] border-[#E2E8F0]">
@@ -199,16 +180,6 @@ export default function Page() {
                       <span className="h-[6px] w-[6px] rounded-[50%] bg-[#D97706]" />
                       Đã nộp
                     </span>
-                  </td>
-                  <td className="px-[12px] py-[12px]">
-                    <div className="flex items-center gap-[14px] text-[18px] text-[#475569]">
-                      <button type="button" className="hover:text-[#4F46E5]">
-                        <LuSquarePen />
-                      </button>
-                      <button type="button" className="hover:text-[#4F46E5]">
-                        <LuEllipsis />
-                      </button>
-                    </div>
                   </td>
                 </tr>
 
@@ -234,19 +205,9 @@ export default function Page() {
                       Quá hạn
                     </span>
                   </td>
-                  <td className="px-[12px] py-[12px]">
-                    <div className="flex items-center gap-[14px] text-[18px] text-[#475569]">
-                      <button type="button" className="hover:text-[#4F46E5]">
-                        <LuSquarePen />
-                      </button>
-                      <button type="button" className="hover:text-[#4F46E5]">
-                        <LuEllipsis />
-                      </button>
-                    </div>
-                  </td>
                 </tr>
 
-                {/* 4: Hoàn thành */}
+                {/* 4: Hoàn thành
                 <tr className="border-t-[1px] border-[#E2E8F0]">
                   <td className="px-[20px] py-[12px]">
                     <div className="font-semibold">Hướng dẫn nhận diện thương hiệu</div>
@@ -278,7 +239,7 @@ export default function Page() {
                       </button>
                     </div>
                   </td>
-                </tr>
+                </tr> */}
               </tbody>
             </table>
           </div>
