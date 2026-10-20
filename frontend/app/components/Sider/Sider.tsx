@@ -25,7 +25,7 @@ type SiderItem = {
 // Menu dành riêng cho Admin (Quản trị viên)
 export const siderItemsAdmin: SiderItem[] = [
   { Icon: LuLayoutDashboard, title: "Tổng quan Admin", pathname: "/admin/dashboard" },
-  { Icon: LuListChecks, title: "Tất cả Task", pathname: "/admin/tasks/list" },
+  { Icon: LuListChecks, title: "Tất cả Task", pathname: "/admin/task/list" },
   { Icon: LuFolderCheck, title: "Bài nộp nhóm", pathname: "/admin/submit-task/list" },
   { Icon: LuUsers, title: "Thành viên", pathname: "/admin/member/list" },
   { Icon: LuTable, title: "Xuất Excel", pathname: "/admin/export/exel" },
@@ -104,7 +104,7 @@ export const Sider = () => {
   return (
     <>
       {/* Sider bar */}
-      <aside className="fixed left-[0px] top-[0px] z-[50] flex h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF]">
+      <aside className="fixed left-[0px] top-[0px] z-[50] hidden h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF] lg:flex">
         {/* Logo */}
         <div className="flex items-center gap-[12px] p-[24px]">
           <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[12px] bg-[#4F46E5] text-[18px] text-[#FFFFFF]">
