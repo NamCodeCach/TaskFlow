@@ -26,7 +26,7 @@ type SiderItem = {
 export const siderItemsAdmin: SiderItem[] = [
   { Icon: LuLayoutDashboard, title: "Tổng quan Admin", pathname: "/admin/dashboard" },
   { Icon: LuListChecks, title: "Tất cả Task", pathname: "/admin/task/list" },
-  { Icon: LuFolderCheck, title: "Bài nộp nhóm", pathname: "/admin/submit-task/list" },
+  { Icon: LuFolderCheck, title: "Bài nộp", pathname: "/admin/submit-task/list" },
   { Icon: LuUsers, title: "Thành viên", pathname: "/admin/member/list" },
   { Icon: LuTable, title: "Xuất Excel", pathname: "/admin/export/exel" },
 ];
