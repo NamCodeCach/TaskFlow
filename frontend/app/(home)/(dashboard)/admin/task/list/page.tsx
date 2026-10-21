@@ -25,12 +25,6 @@ export default function Page() {
       {/* End Title */}
 
       {/* add task */}
-      <button
-        className="flex h-[42px] cursor-pointer items-center justify-center gap-[8px] rounded-[12px] bg-main px-[16px] text-[13px] font-[600] text-white mt-[24px]"
-        onClick={() => setOpenCreate(true)}
-      >
-        + Tạo task
-      </button>
 
       {openCreate &&
         createPortal(
@@ -123,14 +117,11 @@ export default function Page() {
         <div className="w-full overflow-x-auto rounded-[16px] border border-[#E2E8F0] bg-white shadow-[0px_4px_16px_0px_#1018280A]">
           <div className="min-w-[900px]">
             {/* Tiêu đề */}
-            <div className="flex items-center justify-between px-[20px] pb-[16px] pt-[20px]">
-              <h2 className="text-[18px] font-bold text-text">Danh sách task</h2>
-            </div>
 
             {/* Filter bar */}
-            <div className="flex flex-wrap items-center gap-3 px-[20px] pb-[20px]">
+            <div className="flex flex-wrap items-center gap-3 px-[20px] py-[20px]">
               {/* Tìm kiếm */}
-              <label className="box text-[#475569] flex min-w-[240px] flex-1 items-center gap-2">
+              <label className="box flex min-w-[240px] flex-1 items-center gap-2 text-[#475569]">
                 <LuSearch size={14} className="shrink-0 text-slate-400" />
                 <input
                   type="text"
@@ -141,7 +132,7 @@ export default function Page() {
 
               {/* Trạng thái */}
               <div className="relative">
-                <select className="box text-[#475569] w-[190px] appearance-none pr-[36px]">
+                <select className="box w-[190px] appearance-none pr-[36px] text-[#475569]">
                   <option>Trạng thái</option>
                 </select>
                 <LuChevronDown
@@ -151,15 +142,24 @@ export default function Page() {
               </div>
 
               {/* Hạn nộp */}
-              <input type="date" className="box text-[#475569] w-[170px]" />
+              <input type="date" className="box w-[170px] text-[#475569]" />
 
               {/* Xóa */}
               <button
                 type="button"
-                className="box flex cursor-pointer items-center justify-center gap-[8px] border-red-200 font-semibold text-[red] hover:bg-red-50 opacity-90 hover:opacity-100"
+                className="box flex cursor-pointer items-center justify-center gap-[8px] border-red-200 font-semibold text-red-600 opacity-90 hover:bg-red-50 hover:opacity-100"
               >
                 <FaTrashAlt size={13} />
                 Xóa
+              </button>
+
+              {/* Tạo task */}
+              <button
+                type="button"
+                className="flex h-[42px] cursor-pointer items-center justify-center gap-[8px] rounded-[12px] bg-main px-[16px] text-[13px] font-[600] text-white hover:opacity-100 opacity-100"
+                onClick={() => setOpenCreate(true)}
+              >
+                + Tạo task
               </button>
             </div>
 
