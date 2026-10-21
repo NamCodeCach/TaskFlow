@@ -48,8 +48,20 @@ export default function UserTaskListPage() {
       {/* Tab filter */}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-lg bg-main px-4 py-2 text-xs font-semibold text-white">
-            Tất cả <span className="ml-1 font-normal">2</span>
+          <button className="rounded-lg bg-main px-4 py-2 text-xs font-semibold text-white text-[13px]">
+            Tất cả <span className="ml-1">2</span>
+          </button>
+          {/* Cần làm */}
+          <button className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-text text-[13px]  ">
+            Cần làm<span className="ml-1">2</span>
+          </button>
+          {/* Đã nộp */}
+          <button className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-text text-[13px]  ">
+            Đã nộp<span className="ml-1">2</span>
+          </button>
+          {/* Hoàn thành */}
+          <button className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-text text-[13px]  ">
+            Hoàn thành<span className="ml-1">2</span>
           </button>
         </div>
         <button type="button" className="inline-flex items-center gap-2 text-xs text-slate-500">

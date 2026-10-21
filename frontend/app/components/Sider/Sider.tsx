@@ -34,7 +34,6 @@ export const siderItemsAdmin: SiderItem[] = [
 // Menu dành riêng cho User (Thành viên)
 export const siderItemsUser: SiderItem[] = [
   { Icon: LuLayoutDashboard, title: "Task của tôi", pathname: "/user/task/list" },
-  { Icon: LuFolderCheck, title: "Bài đã nộp", pathname: "/user/task/submitted" },
 ];
 
 export const Sider = () => {

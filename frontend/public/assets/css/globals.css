@@ -207,40 +207,7 @@ html {
 
 /* End Checkbox */
 
-/* Cart detail */
-.table-cart .inner-body-table td,
-.table-cart .inner-head-table th {
-  padding: 14px
-}
 
-.inner-head-table th:first-child {
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-}
-
-.inner-head-table th:last-child {
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
-
-.inner-body-table td {
-  padding: 12px 16px;
-  vertical-align: middle;
-  border-top: 1px solid #E5E7EB;
-  border-bottom: 1px solid #E5E7EB;
-}
-
-.inner-body-table td:first-child {
-  border-left: 1px solid #E5E7EB;
-  border-top-left-radius: 12px;
-  border-bottom-left-radius: 12px;
-}
-
-.inner-body-table td:last-child {
-  border-right: 1px solid #E5E7EB;
-  border-top-right-radius: 12px;
-  border-bottom-right-radius: 12px;
-}
 
 /* End Cart detail */
 
@@ -248,18 +215,15 @@ html {
   height: 42px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
-  /* slate-200 */
   background: #ffffff;
   padding: 0 16px;
   font-size: 13px;
-  /* slate-600 */
   outline: none;
 }
 
 .task-list th {
   white-space: nowrap;
   padding: 14px 12px;
-  /* py-[14px] px-[12px] */
   font-weight: 500;
 }
 
