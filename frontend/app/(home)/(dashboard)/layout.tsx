@@ -13,6 +13,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   // Cơ chế Bảo vệ phân quyền (Route Guard): Chặn tài khoản User thường truy cập vào trang Admin
   useEffect(() => {
@@ -51,15 +52,16 @@ export default function DashboardLayout({
 
   return (
     <>
-      {/* Header */}
-      <Header />
-      {/* End Header */}
+      {/* Header - truyền callback để toggle mobile sidebar */}
+      <Header onMenuToggle={() => setMobileOpen((prev) => !prev)} />
+
+      {/* Sider - truyền state mobile */}
+      <Sider
+        mobileOpen={mobileOpen}
+        onMobileClose={() => setMobileOpen(false)}
+      />
 
       <main className="main">{children}</main>
-
-      {/* Sider */}
-      <Sider />
-      {/* End Sider */}
     </>
   );
 }

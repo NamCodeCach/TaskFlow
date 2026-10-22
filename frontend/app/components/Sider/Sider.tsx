@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FaListCheck } from "react-icons/fa6";
 import type { IconType } from "react-icons";
 import { usePathname, useRouter } from "next/navigation";
+import { LuX } from "react-icons/lu";
 
 import {
   LuLayoutDashboard,
@@ -37,7 +38,15 @@ export const siderItemsUser: SiderItem[] = [
   { Icon: LuFolderCheck, title: "Bài đã nộp", pathname: "/user/task/submitted" },
 ];
 
-export const Sider = () => {
+// Export để Header có thể dùng
+export type { SiderItem };
+
+interface SiderProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export const Sider = ({ mobileOpen = false, onMobileClose }: SiderProps) => {
   const currentPath = usePathname();
   const router = useRouter();
 
@@ -66,6 +75,11 @@ export const Sider = () => {
     }
   }, [currentPath]);
 
+  // Đóng mobile sidebar khi đổi trang
+  useEffect(() => {
+    if (onMobileClose) onMobileClose();
+  }, [currentPath]);
+
   const sider = role === "admin" ? siderItemsAdmin : siderItemsUser;
 
   // Đăng xuất
@@ -74,12 +88,11 @@ export const Sider = () => {
     router.push("/account/login");
   };
 
-  return (
-    <>
-      {/* Sider bar */}
-      <aside className="fixed left-[0px] top-[0px] z-[50] hidden h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF] lg:flex">
-        {/* Logo */}
-        <div className="flex items-center gap-[12px] p-[24px]">
+  const sidebarContent = (
+    <div className="flex h-full flex-col">
+      {/* Logo */}
+      <div className="flex items-center justify-between gap-[12px] p-[24px]">
+        <div className="flex items-center gap-[12px]">
           <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[12px] bg-[#4F46E5] text-[18px] text-[#FFFFFF]">
             <FaListCheck />
           </div>
@@ -90,78 +103,113 @@ export const Sider = () => {
             </span>
           </div>
         </div>
+        {/* Nút đóng - chỉ hiện trên mobile */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="lg:hidden flex h-[32px] w-[32px] items-center justify-center rounded-[10px] text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+        >
+          <LuX size={18} />
+        </button>
+      </div>
 
-        {/* Menu */}
-        <nav className="flex-1 px-[16px]">
-          <p className="mb-[8px] px-[16px] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#9CA3AF]">
-            {role === "admin" ? "Quản trị hệ thống" : "Không gian làm việc"}
-          </p>
+      {/* Menu */}
+      <nav className="flex-1 px-[16px]">
+        <p className="mb-[8px] px-[16px] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#9CA3AF]">
+          {role === "admin" ? "Quản trị hệ thống" : "Không gian làm việc"}
+        </p>
 
-          <ul className="space-y-[4px]">
-            {sider.map(({ Icon, title, pathname }) => {
-              const isActive = currentPath.startsWith(pathname);
+        <ul className="space-y-[4px]">
+          {sider.map(({ Icon, title, pathname }) => {
+            const isActive = currentPath.startsWith(pathname);
 
-              return (
-                <li key={pathname}>
-                  <Link
-                    href={pathname}
-                    className={`flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] transition ${
-                      isActive
-                        ? "bg-[#EEF2FF] font-semibold text-[#4F46E5]"
-                        : "text-[#475467] hover:bg-[#F8FAFC]"
-                    }`}
-                  >
-                    <Icon className="text-[18px]" />
-                    <span>{title}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+            return (
+              <li key={pathname}>
+                <Link
+                  href={pathname}
+                  className={`flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] transition ${
+                    isActive
+                      ? "bg-[#EEF2FF] font-semibold text-[#4F46E5]"
+                      : "text-[#475467] hover:bg-[#F8FAFC]"
+                  }`}
+                >
+                  <Icon className="text-[18px]" />
+                  <span>{title}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
-        {/* Cho phép tài khoản Quản trị viên (Admin) chuyển đổi linh hoạt chế độ xem */}
-        {currentUserRole === "admin" && (
-          <div className="px-4 py-2 border-t border-slate-100">
-            {role === "admin" ? (
-              <Link
-                href="/user/task/list"
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-main transition"
-              >
-                <span className="flex items-center gap-1.5">
-                  <LuShieldAlert size={14} />
-                  Xem với vai trò User
-                </span>
-                <span>⇄</span>
-              </Link>
-            ) : (
-              <Link
-                href="/admin/member/list"
-                className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-main hover:bg-indigo-100 transition"
-              >
-                <span className="flex items-center gap-1.5">
-                  <LuShieldAlert size={14} />
-                  Quay lại Admin
-                </span>
-                <span>👑</span>
-              </Link>
-            )}
-          </div>
-        )}
-
-        {/* Đăng xuất */}
-        <div className="border-t-[1px] border-[#E2E8F0] p-[16px]">
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex w-full items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#EF4444] transition hover:bg-[#FEF2F2] cursor-pointer"
-          >
-            <LuLogOut className="text-[18px]" />
-            Đăng xuất
-          </button>
+      {/* Cho phép tài khoản Quản trị viên (Admin) chuyển đổi linh hoạt chế độ xem */}
+      {currentUserRole === "admin" && (
+        <div className="px-4 py-2 border-t border-slate-100">
+          {role === "admin" ? (
+            <Link
+              href="/user/task/list"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-main transition"
+            >
+              <span className="flex items-center gap-1.5">
+                <LuShieldAlert size={14} />
+                Xem với vai trò User
+              </span>
+              <span>⇄</span>
+            </Link>
+          ) : (
+            <Link
+              href="/admin/member/list"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl bg-indigo-50 text-main hover:bg-indigo-100 transition"
+            >
+              <span className="flex items-center gap-1.5">
+                <LuShieldAlert size={14} />
+                Quay lại Admin
+              </span>
+              <span>👑</span>
+            </Link>
+          )}
         </div>
+      )}
+
+      {/* Đăng xuất */}
+      <div className="border-t-[1px] border-[#E2E8F0] p-[16px]">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#EF4444] transition hover:bg-[#FEF2F2] cursor-pointer"
+        >
+          <LuLogOut className="text-[18px]" />
+          Đăng xuất
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar - luôn hiện trên lg+ */}
+      <aside className="fixed left-0 top-0 z-[50] hidden h-screen w-[254px] overflow-y-auto border-r border-[#E2E8F0] bg-white lg:flex lg:flex-col">
+        {sidebarContent}
       </aside>
-      {/* End Sider bar */}
+
+      {/* Mobile Sidebar Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-[60] lg:hidden"
+          onClick={onMobileClose}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+          {/* Drawer */}
+          <aside
+            className="absolute left-0 top-0 h-full w-[254px] overflow-y-auto bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
     </>
   );
 };

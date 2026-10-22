@@ -37,7 +37,7 @@ interface SubAccount {
   role?: string;
 }
 
-export const Header = () => {
+export const Header = ({ onMenuToggle }: { onMenuToggle?: () => void }) => {
   const router = useRouter();
 
   // Thông tin người dùng đăng nhập hiện tại

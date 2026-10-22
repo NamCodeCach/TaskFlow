@@ -102,16 +102,19 @@ export default function LoginPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // Kiểm tra nếu đang bị khóa
-    if (isLocked && lockUntil > Date.now()) {
+    const trimmedEmail = email.trim().toLowerCase();
+    const inputPassword = password;
+
+    // Admin không bao giờ bị khóa tạm thời
+    const isAdminAccount = trimmedEmail === "nam.nguyen@taskflow.vn";
+
+    // Kiểm tra nếu đang bị khóa (chỉ áp dụng tài khoản thường)
+    if (!isAdminAccount && isLocked && lockUntil > Date.now()) {
       setErrorMessage(
         `Tài khoản đang bị tạm khóa do nhập sai 5 lần. Vui lòng đợi ${countdown} giây để thử lại!`
       );
       return;
     }
-
-    const trimmedEmail = email.trim().toLowerCase();
-    const inputPassword = password;
 
     if (!trimmedEmail) {
       setErrorMessage("Vui lòng nhập địa chỉ Email!");
@@ -136,7 +139,8 @@ export default function LoginPage() {
       localStorage.removeItem("taskflow_lock_until");
       localStorage.removeItem("taskflow_failed_attempts");
 
-      if (user.mustChangePassword) {
+      // Admin không bao giờ bị bắt đổi mật khẩu – vào thẳng trang quản trị
+      if (user.mustChangePassword && user.role !== "admin") {
         setPendingUser(user);
         setFirstTimeNewPass("");
         setFirstTimeConfirmPass("");
@@ -148,31 +152,41 @@ export default function LoginPage() {
       completeSuccessfulLogin(user);
       return;
     } catch (apiErr: any) {
-      // Nếu lỗi là "network error" / "Failed to fetch" → backend chưa chạy → fallback localStorage
+      // -----------------------------------------------------------------------
+      // fetch() luôn throw TypeError khi không kết nối được server
+      // → fallback sang localStorage
+      // Các lỗi HTTP 4xx/5xx từ backend → báo lỗi & đếm sai mật khẩu
+      // -----------------------------------------------------------------------
       const isNetworkErr =
+        apiErr instanceof TypeError ||
         apiErr?.message?.includes("fetch") ||
         apiErr?.message?.includes("Network") ||
         apiErr?.message?.includes("Failed") ||
-        apiErr?.message?.includes("ERR_CONNECTION");
+        apiErr?.message?.includes("ERR_CONNECTION") ||
+        apiErr?.message?.includes("ECONNREFUSED") ||
+        apiErr?.message?.includes("connect");
 
       if (!isNetworkErr) {
         // Lỗi từ backend (sai mật khẩu, không tồn tại...)
-        const nextAttempts = failedAttempts + 1;
-        setFailedAttempts(nextAttempts);
-        localStorage.setItem("taskflow_failed_attempts", nextAttempts.toString());
+        // Admin không bị đếm sai và không bị khóa
+        if (!isAdminAccount) {
+          const nextAttempts = failedAttempts + 1;
+          setFailedAttempts(nextAttempts);
+          localStorage.setItem("taskflow_failed_attempts", nextAttempts.toString());
 
-        if (nextAttempts >= 5) {
-          const lockTime = Date.now() + 60 * 1000;
-          setLockUntil(lockTime);
-          setIsLocked(true);
-          setCountdown(60);
-          localStorage.setItem("taskflow_lock_until", lockTime.toString());
-          setErrorMessage("⚠️ Bạn đã nhập sai mật khẩu 5 lần! Tài khoản tạm thời bị khóa trong 1 phút (60 giây).");
+          if (nextAttempts >= 5) {
+            const lockTime = Date.now() + 60 * 1000;
+            setLockUntil(lockTime);
+            setIsLocked(true);
+            setCountdown(60);
+            localStorage.setItem("taskflow_lock_until", lockTime.toString());
+            setErrorMessage("⚠️ Bạn đã nhập sai mật khẩu 5 lần! Tài khoản tạm thời bị khóa trong 1 phút (60 giây).");
+          } else {
+            const remainingTries = 5 - nextAttempts;
+            setErrorMessage(`${apiErr.message} (Còn ${remainingTries} lần thử)`);
+          }
         } else {
-          const remainingTries = 5 - nextAttempts;
-          setErrorMessage(
-            `${apiErr.message} (Còn ${remainingTries} lần thử)`
-          );
+          setErrorMessage(apiErr.message || "Mật khẩu không chính xác!");
         }
         return;
       }
@@ -225,7 +239,7 @@ export default function LoginPage() {
       } catch {}
     }
 
-    // 3. Đọc từ taskflow_users (Ưu tiên cao nhất)
+    // 3. Đọc từ taskflow_users – KHÔNG được override tài khoản admin hardcode
     const storedUsersStr = localStorage.getItem("taskflow_users");
     if (storedUsersStr) {
       try {
@@ -233,12 +247,26 @@ export default function LoginPage() {
         if (Array.isArray(registeredUsers)) {
           registeredUsers.forEach((u: any) => {
             if (u && u.email) {
-              allUsersMap[u.email.toLowerCase().trim()] = u;
+              const emailKey = u.email.toLowerCase().trim();
+              // Bỏ qua nếu là tài khoản admin hardcode
+              const isHardcoded = defaultAccounts.some(
+                (d) => d.email.toLowerCase() === emailKey && d.role === "admin"
+              );
+              if (!isHardcoded) {
+                allUsersMap[emailKey] = u;
+              }
             }
           });
         }
       } catch {}
     }
+
+    // 4. Ghi đè lại admin hardcode lần cuối – đảm bảo luôn đúng mật khẩu
+    defaultAccounts
+      .filter((d) => d.role === "admin")
+      .forEach((d) => {
+        allUsersMap[d.email.toLowerCase().trim()] = d;
+      });
 
     const user = allUsersMap[trimmedEmail];
 
@@ -249,6 +277,12 @@ export default function LoginPage() {
 
     // Kiểm tra mật khẩu
     if (user.password !== inputPassword) {
+      // Admin không bị đếm sai & không bị khóa
+      if (isAdminAccount) {
+        setErrorMessage("Mật khẩu không chính xác!");
+        return;
+      }
+
       const nextAttempts = failedAttempts + 1;
       setFailedAttempts(nextAttempts);
       localStorage.setItem("taskflow_failed_attempts", nextAttempts.toString());
@@ -279,7 +313,8 @@ export default function LoginPage() {
     // =========================================================================
     // NẾU TÀI KHOẢN ĐANG CÓ CỜ "BẮT BUỘC ĐỔI MẬT KHẨU LẦN ĐẦU" (mustChangePassword)
     // =========================================================================
-    if (user.mustChangePassword) {
+    // Admin không bao giờ bị bắt đổi mật khẩu – vào thẳng trang quản trị
+    if (user.mustChangePassword && user.role !== "admin") {
       setPendingUser(user);
       setFirstTimeNewPass("");
       setFirstTimeConfirmPass("");
