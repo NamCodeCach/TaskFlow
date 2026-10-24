@@ -66,9 +66,34 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- JJWT 0.12.6 – API + impl + Jackson serializer -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.6</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.6</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Spring Mail (Gửi email OTP xác thực) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
     </dependencies>
 
-      <build>
+    <build>
         <plugins>
             <!-- 1. BỔ SUNG: Cấu hình Compiler nạp Lombok để sinh Getter/Setter/Log trên Java 21 -->
             <plugin>
