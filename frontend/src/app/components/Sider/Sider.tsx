@@ -16,6 +16,8 @@ import {
   LuShieldAlert,
 } from "react-icons/lu";
 
+import { deleteCookie } from "@/app/utils/cookie";
+
 type SiderItem = {
   Icon: IconType;
   title: string;
@@ -25,8 +27,8 @@ type SiderItem = {
 // Menu dành riêng cho Admin (Quản trị viên)
 export const siderItemsAdmin: SiderItem[] = [
   { Icon: LuLayoutDashboard, title: "Tổng quan Admin", pathname: "/admin/dashboard" },
-  { Icon: LuListChecks, title: "Tất cả Task", pathname: "/admin/tasks/list" },
-  { Icon: LuFolderCheck, title: "Bài nộp nhóm", pathname: "/admin/submit-task/list" },
+  { Icon: LuListChecks, title: "Tất cả Task", pathname: "/admin/task/list" },
+  { Icon: LuFolderCheck, title: "Bài nộp", pathname: "/admin/submit-task/list" },
   { Icon: LuUsers, title: "Thành viên", pathname: "/admin/member/list" },
   { Icon: LuTable, title: "Xuất Excel", pathname: "/admin/export/exel" },
 ];
@@ -34,7 +36,6 @@ export const siderItemsAdmin: SiderItem[] = [
 // Menu dành riêng cho User (Thành viên)
 export const siderItemsUser: SiderItem[] = [
   { Icon: LuLayoutDashboard, title: "Task của tôi", pathname: "/user/task/list" },
-  { Icon: LuFolderCheck, title: "Bài đã nộp", pathname: "/user/task/submitted" },
 ];
 
 export const Sider = () => {
@@ -93,10 +94,13 @@ export const Sider = () => {
     }
   }, []);
 
-  const sider = role === "admin" ? siderItemsAdmin : siderItemsUser;
+  const sider = currentUserRole === "admin" ? siderItemsAdmin : siderItemsUser;
 
   // Đăng xuất
   const handleLogout = () => {
+    deleteCookie("taskflow_token");
+    deleteCookie("taskflow_role");
+    deleteCookie("taskflow_user");
     localStorage.removeItem("taskflow_current_user");
     router.push("/account/login");
   };
@@ -104,7 +108,7 @@ export const Sider = () => {
   return (
     <>
       {/* Sider bar */}
-      <aside className="fixed left-[0px] top-[0px] z-[50] flex h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF]">
+      <aside className="fixed left-[0px] top-[0px] z-[50] hidden h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF] lg:flex">
         {/* Logo */}
         <div className="flex items-center gap-[12px] p-[24px]">
           <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[12px] bg-[#4F46E5] text-[18px] text-[#FFFFFF]">
