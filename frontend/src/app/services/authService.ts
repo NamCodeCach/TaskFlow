@@ -79,4 +79,79 @@ export const authService = {
       };
     }
   },
+
+  /**
+   * Gửi yêu cầu quên mật khẩu, sinh OTP
+   */
+  async forgotPassword(email: string): Promise<ApiResponse<string>> {
+    try {
+      const response = await fetch(`${API_BASE}/api/users/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Lỗi máy chủ (${response.status})`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      return {
+        code: "error",
+        message: error.message || "Không thể kết nối đến máy chủ!",
+      };
+    }
+  },
+
+  /**
+   * Xác thực mã OTP
+   */
+  async verifyOtp(email: string, otp: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE}/api/users/auth/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, otp }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Lỗi máy chủ (${response.status})`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      return {
+        code: "error",
+        message: error.message || "Không thể xác thực OTP!",
+      };
+    }
+  },
+
+  /**
+   * Đặt lại mật khẩu mới
+   */
+  async resetPassword(email: string, otp: string, newPassword: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await fetch(`${API_BASE}/api/users/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, otp, newPassword }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Lỗi máy chủ (${response.status})`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      return {
+        code: "error",
+        message: error.message || "Không thể đặt lại mật khẩu!",
+      };
+    }
+  },
 };
