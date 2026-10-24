@@ -52,7 +52,15 @@ IF EXIST "%AUTH_DLL_DIR%\mssql-jdbc_auth-12.6.1.x64.dll" (
     echo [CANH BAO] Khong tim thay mssql-jdbc_auth-12.6.1.x64.dll!
 )
 
-:: 3. Khoi dong Spring Boot
+:: 3. Kill process cu tren port 8080 (neu co) de tranh conflict
+echo [INFO] Kiem tra port 8080...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8080 " ^| findstr "LISTENING"') do (
+    echo [INFO] Dang tat process cu PID=%%a tren port 8080...
+    taskkill /PID %%a /F >nul 2>&1
+)
+timeout /t 2 /nobreak >nul
+
+:: 4. Khoi dong Spring Boot
 echo.
 echo [OK] Dang khoi dong Spring Boot Backend tai http://localhost:8080...
 echo Nhan Ctrl+C de dung.
