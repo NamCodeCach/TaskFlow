@@ -28,7 +28,7 @@ public class User {
     @Column(unique = true, nullable = false, length = 150)
     private String email;
 
-    /** Mật khẩu (plaintext tạm thời – nên chuyển sang BCrypt sau) */
+    /** Mật khẩu mã hóa AES */
     @Column(nullable = false, length = 255)
     private String password;
 
@@ -86,14 +86,49 @@ public class User {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    /** Thời điểm cập nhật tài khoản gần nhất */
+    private LocalDateTime updatedAt;
+
+    /**
+     * Trường timestamps: Chuỗi đại diện cho tên người dùng (dạng slug/không dấu)
+     * giúp tìm kiếm và tra cứu tài khoản dễ dàng, không bị lỗi dấu tiếng Việt.
+     * Ví dụ: "Lê Trần Hoàng Nam" -> "le-tran-hoang-nam"
+     */
+    @Column(length = 150)
+    private String timestamps;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+        if ((timestamps == null || timestamps.isBlank()) && fullName != null) {
+            timestamps = generateSearchSlug(fullName);
+        }
         if (role == null) role = "user";
         if (isDobLocked == null) isDobLocked = false;
         if (isAddressLocked == null) isAddressLocked = false;
         if (mustChangePassword == null) mustChangePassword = false;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+        if ((timestamps == null || timestamps.isBlank()) && fullName != null) {
+            timestamps = generateSearchSlug(fullName);
+        }
+    }
+
+    private String generateSearchSlug(String name) {
+        if (name == null || name.isBlank()) return "";
+        String normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD);
+        String unaccented = normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        return unaccented.toLowerCase()
+                .replace("đ", "d")
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
     }
 }
