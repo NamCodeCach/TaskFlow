@@ -1,6 +1,9 @@
 package com.network.kanban.controller;
 
+import com.network.kanban.dto.request.ForgotPasswordRequest;
 import com.network.kanban.dto.request.LoginRequest;
+import com.network.kanban.dto.request.ResetPasswordRequest;
+import com.network.kanban.dto.request.VerifyOtpRequest;
 import com.network.kanban.dto.response.ApiResponse;
 import com.network.kanban.dto.response.LoginResponse;
 import com.network.kanban.model.User;
@@ -47,6 +50,48 @@ public class UserController {
         try {
             User user = userService.getUserByEmail(email);
             return ResponseEntity.ok(ApiResponse.success("Thành công", user));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/users/auth/forgot-password
+     * Gửi mã OTP xác thực qua email để đặt lại mật khẩu.
+     */
+    @PostMapping("/auth/forgot-password")
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        try {
+            userService.sendForgotPasswordOtp(req.getEmail());
+            return ResponseEntity.ok(ApiResponse.success("Mã xác thực OTP đã được gửi về email của bạn! Vui lòng kiểm tra hộp thư.", null));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/users/auth/verify-otp
+     * Kiểm tra mã OTP người dùng nhập vào.
+     */
+    @PostMapping("/auth/verify-otp")
+    public ResponseEntity<?> verifyOtp(@Valid @RequestBody VerifyOtpRequest req) {
+        try {
+            userService.verifyResetOtp(req.getEmail(), req.getOtp());
+            return ResponseEntity.ok(ApiResponse.success("Xác thực OTP thành công!", null));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/users/auth/reset-password
+     * Đặt lại mật khẩu mới (mã hóa AES) và xóa mã OTP.
+     */
+    @PostMapping("/auth/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        try {
+            userService.resetPassword(req.getEmail(), req.getOtp(), req.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.", null));
         } catch (Exception e) {
             return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
         }

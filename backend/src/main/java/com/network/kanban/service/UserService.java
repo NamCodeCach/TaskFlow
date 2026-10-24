@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -16,6 +19,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final EncryptionUtil encryptionUtil;
+    private final EmailService emailService;
 
     @Value("${jwt.expiration-ms:86400000}")
     private long defaultExpirationMs;
@@ -102,5 +106,92 @@ public class UserService {
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email.trim().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản!"));
+    }
+
+    /**
+     * Bước 1: Tạo và gửi mã OTP đặt lại mật khẩu (6 chữ số, hiệu lực 5 phút)
+     */
+    public String sendForgotPasswordOtp(String email) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email không được để trống!");
+        }
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
+
+        // Sinh mã OTP 6 chữ số ngẫu nhiên
+        SecureRandom random = new SecureRandom();
+        String otp = String.format("%06d", random.nextInt(1000000));
+
+        // Thiết lập OTP và thời hạn 5 phút
+        user.setResetOtp(otp);
+        user.setResetOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+
+        // Gửi email chứa mã OTP thực tế tới hộp thư của người dùng
+        emailService.sendOtpEmail(normalizedEmail, otp);
+
+        // In ra log console dự phòng
+        System.out.println("==================================================");
+        System.out.println("[FORGET PASSWORD OTP] Email: " + normalizedEmail + " -> Mã OTP: " + otp);
+        System.out.println("==================================================");
+
+        return otp;
+    }
+
+    /**
+     * Bước 2: Xác thực mã OTP người dùng nhập
+     */
+    public boolean verifyResetOtp(String email, String otp) {
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Email không được để trống!");
+        }
+        if (otp == null || otp.isBlank()) {
+            throw new RuntimeException("Mã OTP không được để trống!");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
+
+        if (user.getResetOtp() == null || user.getResetOtpExpiry() == null) {
+            throw new RuntimeException("Yêu cầu đặt lại mật khẩu không hợp lệ hoặc chưa tạo OTP!");
+        }
+
+        if (user.getResetOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Mã OTP đã hết hạn! Vui lòng yêu cầu gửi lại mã mới.");
+        }
+
+        if (!user.getResetOtp().equals(otp.trim())) {
+            throw new RuntimeException("Mã OTP không chính xác!");
+        }
+
+        return true;
+    }
+
+    /**
+     * Bước 3: Đặt lại mật khẩu mới (Mã hóa AES)
+     */
+    public void resetPassword(String email, String otp, String newPassword) {
+        // Kiểm tra OTP trước
+        verifyResetOtp(email, otp);
+
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("Mật khẩu mới phải có ít nhất 6 ký tự!");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống!"));
+
+        // Mã hóa mật khẩu bằng AES trước khi lưu vào CSDL
+        String encryptedPassword = encryptionUtil.encrypt(newPassword);
+        user.setPassword(encryptedPassword);
+
+        // Xóa mã OTP sau khi sử dụng thành công
+        user.setResetOtp(null);
+        user.setResetOtpExpiry(null);
+
+        userRepository.save(user);
     }
 }

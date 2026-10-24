@@ -82,6 +82,13 @@ public class User {
     @Builder.Default
     private Boolean mustChangePassword = false;
 
+    /** Mã xác thực OTP đặt lại mật khẩu */
+    @Column(length = 10)
+    private String resetOtp;
+
+    /** Thời điểm hết hạn của mã OTP */
+    private LocalDateTime resetOtpExpiry;
+
     /** Thời điểm tạo tài khoản – tự động điền */
     @Column(updatable = false)
     private LocalDateTime createdAt;
