@@ -243,3 +243,12 @@ html {
 .task-list .action-btn {
   cursor: pointer;
 }
+
+/* just-validate-error-label */
+.just-validate-error-label {
+  position: absolute;
+  bottom: -21px;
+  font-size: 13px;
+}
+
+/* End just-validate-error-label */
