@@ -1,22 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   LuBell,
   LuChevronRight,
   LuLogOut,
   LuMenu,
   LuSearch,
-  LuX,
   LuShieldCheck,
   LuUser,
-  LuLock,
-  LuArrowRightLeft,
 } from "react-icons/lu";
-import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
+import { deleteCookie } from "@/app/utils/cookie";
+import { authService } from "@/app/services/authService";
+
+interface CurrentUser {
+  userId?: number;
+  fullName?: string;
+  email?: string;
+  role?: string;
+  avatar?: string | null;
+}
 
 export const Header = () => {
+  const router = useRouter();
+  const [user, setUser] = useState<CurrentUser>({
+    fullName: "Thành viên",
+    email: "",
+    role: "user",
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedUserStr = localStorage.getItem("taskflow_current_user");
+      if (savedUserStr) {
+        try {
+          const parsed = JSON.parse(savedUserStr);
+          setUser(parsed);
+
+          // Tự động đồng bộ thông tin mới nhất từ CSDL để sửa lỗi font cũ trong localStorage
+          if (parsed.email) {
+            authService.getAccount(parsed.email).then((res) => {
+              if (res.code === "success" && res.data) {
+                const updated: CurrentUser = {
+                  userId: res.data.id || parsed.userId,
+                  fullName: res.data.fullName || parsed.fullName,
+                  email: res.data.email || parsed.email,
+                  role: res.data.role || parsed.role,
+                  avatar: res.data.avatar || parsed.avatar,
+                };
+                setUser(updated);
+                localStorage.setItem("taskflow_current_user", JSON.stringify(updated));
+              }
+            }).catch(() => {});
+          }
+        } catch (e) {
+          console.error("Lỗi parse thông tin user:", e);
+        }
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    deleteCookie("taskflow_token");
+    deleteCookie("taskflow_role");
+    deleteCookie("taskflow_user");
+    localStorage.removeItem("taskflow_current_user");
+    router.push("/account/login");
+  };
+
+  const initialLetter = user.fullName ? user.fullName.trim().slice(-1).toUpperCase() : "U";
+
   return (
     <>
       {/* Header */}
@@ -33,7 +88,9 @@ export const Header = () => {
           <div className="flex items-center gap-[12px] text-[14px]">
             <span className="hidden text-[#64748B] sm:block">Không gian làm việc</span>
             <LuChevronRight className="hidden text-[16px] text-[#64748B] sm:block" />
-            <span className="font-semibold text-[#182230]">Tổng quan</span>
+            <span className="font-semibold text-[#182230]">
+              {user.role === "admin" ? "Quản trị viên" : "Tổng quan"}
+            </span>
           </div>
         </div>
 
@@ -63,14 +120,14 @@ export const Header = () => {
           {/* Vùng Avatar + Popup tài khoản (hover để hiện) */}
           <div className="group relative">
             <div
-              className="relative flex h-[42px] w-[42px] cursor-pointer items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 text-[15px] font-bold text-white shadow-sm ring-2 ring-indigo-200 transition group-hover:ring-main"
-              title="Nguyễn Võ Anh Kiệt"
+              className="relative flex h-[42px] w-[42px] cursor-pointer items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-[15px] font-bold text-white shadow-sm ring-2 ring-indigo-200 transition group-hover:ring-main"
+              title={user.fullName || "Tài khoản"}
             >
-              <span>K</span>
+              <span>{initialLetter}</span>
               <span className="absolute bottom-[0px] right-[0px] h-[10px] w-[10px] rounded-full bg-[#22C55E] ring-[2px] ring-[#FFFFFF]" />
             </div>
 
-            {/* pt-3 tạo cầu nối hover giữa avatar và popup, tránh bị ẩn khi di chuột xuống */}
+            {/* Popup thông tin tài khoản */}
             <div className="invisible absolute right-0 top-full z-50 pt-3 opacity-0 transition duration-150 group-hover:visible group-hover:opacity-100">
               <div className="w-[330px] rounded-[24px] border border-[#E2E8F0] bg-white p-5 shadow-[0px_20px_60px_0px_#10182833]">
                 <div className="border-b border-slate-100 pb-2">
@@ -81,20 +138,20 @@ export const Header = () => {
 
                 {/* Avatar + Tên + Email */}
                 <div className="mt-3 flex flex-col items-center text-center">
-                  <div className="relative flex h-[66px] w-[66px] items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-pink-500 to-rose-400 text-[24px] font-bold text-white shadow-md ring-4 ring-pink-100">
-                    <span>K</span>
+                  <div className="relative flex h-[66px] w-[66px] items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-[24px] font-bold text-white shadow-md ring-4 ring-indigo-100">
+                    <span>{initialLetter}</span>
                   </div>
 
                   <h4 className="mt-3 line-clamp-1 text-[16px] font-bold text-slate-800">
-                    Nguyễn Võ Anh Kiệt
+                    {user.fullName || "Người dùng"}
                   </h4>
                   <p className="mt-0.5 break-all px-2 text-[12.5px] text-slate-500">
-                    kiet.nguyen@taskflow.vn
+                    {user.email || "email@taskflow.vn"}
                   </p>
 
                   <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-0.5 text-[11px] font-semibold text-main">
                     <LuShieldCheck size={13} />
-                    Thành viên chính thức
+                    {user.role === "admin" ? "Quản trị viên" : "Thành viên"}
                   </span>
                 </div>
 
@@ -110,6 +167,7 @@ export const Header = () => {
 
                   <button
                     type="button"
+                    onClick={handleLogout}
                     className="mt-1 flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium text-red-600 transition hover:bg-red-50"
                   >
                     <LuLogOut className="text-[16px] text-red-500" />

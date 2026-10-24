@@ -16,6 +16,8 @@ import {
   LuShieldAlert,
 } from "react-icons/lu";
 
+import { deleteCookie } from "@/app/utils/cookie";
+
 type SiderItem = {
   Icon: IconType;
   title: string;
@@ -96,6 +98,9 @@ export const Sider = () => {
 
   // Đăng xuất
   const handleLogout = () => {
+    deleteCookie("taskflow_token");
+    deleteCookie("taskflow_role");
+    deleteCookie("taskflow_user");
     localStorage.removeItem("taskflow_current_user");
     router.push("/account/login");
   };
