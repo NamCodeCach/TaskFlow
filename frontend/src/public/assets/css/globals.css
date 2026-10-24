@@ -249,6 +249,7 @@ html {
   position: absolute;
   bottom: -21px;
   font-size: 13px;
+  left: 0;
 }
 
 /* End just-validate-error-label */
