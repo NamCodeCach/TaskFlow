@@ -1,6 +1,4 @@
-package com.network.kanban.dto;
-
-import org.springframework.core.SpringVersion;
+package com.network.kanban.dto.response;
 
 public class ApiResponse {
 

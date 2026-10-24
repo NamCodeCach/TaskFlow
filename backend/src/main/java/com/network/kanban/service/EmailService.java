@@ -66,4 +66,58 @@ public class EmailService {
             throw new RuntimeException("Lỗi gửi email: " + e.getMessage());
         }
     }
+
+    /**
+     * Gửi email thông báo cấp tài khoản mới kèm thông tin đăng nhập
+     *
+     * @param toEmail  địa chỉ email người nhận
+     * @param fullName họ và tên thành viên
+     * @param password mật khẩu khởi tạo (plaintext)
+     * @param role     vai trò ("admin" hoặc "user")
+     */
+    public void sendAccountCreatedEmail(String toEmail, String fullName, String password, String role) {
+        try {
+            if (fromEmail == null || fromEmail.isBlank() || fromEmail.contains("your_email")) {
+                log.warn("[EMAIL CONFIG] Chưa cấu hình tài khoản Gmail gửi tin!");
+                return;
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "TaskFlow Support");
+            helper.setTo(toEmail);
+            helper.setSubject("[TaskFlow] Thông tin tài khoản của bạn đã sẵn sàng");
+
+            String roleText = "admin".equalsIgnoreCase(role) ? "Quản trị viên" : "Thành viên";
+
+            String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">"
+                    + "  <div style=\"text-align: center; margin-bottom: 24px;\">"
+                    + "    <h2 style=\"color: #2563eb; margin: 0; font-size: 24px;\">TaskFlow</h2>"
+                    + "    <p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">Hệ thống quản lý công việc nhóm</p>"
+                    + "  </div>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Xin chào <strong>" + fullName + "</strong>,</p>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Tài khoản của bạn trên hệ thống <strong>TaskFlow</strong> đã được cấp thành công. Dưới đây là thông tin đăng nhập của bạn:</p>"
+                    + "  <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0;\">"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">👤 <strong>Họ và tên:</strong> " + fullName + "</p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📧 <strong>Email đăng nhập:</strong> <span style=\"color: #2563eb; font-weight: bold;\">" + toEmail + "</span></p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">🔑 <strong>Mật khẩu khởi tạo:</strong> <code style=\"background-color: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #0f172a;\">" + password + "</code></p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">🛡️ <strong>Vai trò:</strong> " + roleText + "</p>"
+                    + "  </div>"
+                    + "  <div style=\"text-align: center; margin: 24px 0;\">"
+                    + "    <a href=\"http://localhost:3000/account/login\" style=\"background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;\">Đăng nhập vào TaskFlow</a>"
+                    + "  </div>"
+                    + "  <p style=\"color: #64748b; font-size: 13px; line-height: 1.5;\">⚠️ Bạn có thể đăng nhập ngay và đổi lại mật khẩu cá nhân trong phần cài đặt tài khoản bất kỳ lúc nào.</p>"
+                    + "  <hr style=\"border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;\" />"
+                    + "  <p style=\"color: #94a3b8; font-size: 12px; text-align: center; margin: 0;\">© 2026 TaskFlow. All rights reserved.</p>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("[ACCOUNT EMAIL SENT] Đã gửi thông tin tài khoản thành công tới: {}", toEmail);
+        } catch (Exception e) {
+            log.error("[ACCOUNT EMAIL ERROR] Lỗi khi gửi email tài khoản tới {}: {}", toEmail, e.getMessage());
+        }
+    }
 }

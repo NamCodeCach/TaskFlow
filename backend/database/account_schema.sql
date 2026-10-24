@@ -149,3 +149,4 @@ GO
 SELECT id, full_name, email, timestamps AS [dai_dien_tim_kiem], role 
 FROM users;
 GO
+

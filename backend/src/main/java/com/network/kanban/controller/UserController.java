@@ -1,5 +1,7 @@
 package com.network.kanban.controller;
 
+import com.network.kanban.dto.request.CreateMemberRequest;
+import com.network.kanban.dto.request.UpdateMemberRequest;
 import com.network.kanban.dto.request.ForgotPasswordRequest;
 import com.network.kanban.dto.request.LoginRequest;
 import com.network.kanban.dto.request.ResetPasswordRequest;
@@ -12,6 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -92,6 +96,65 @@ public class UserController {
         try {
             userService.resetPassword(req.getEmail(), req.getOtp(), req.getNewPassword());
             return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.", null));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * GET /api/users
+     * Lấy toàn bộ danh sách thành viên (dữ liệu động từ Database).
+     */
+    @GetMapping
+    public ResponseEntity<?> getAllMembers() {
+        try {
+            List<User> members = userService.getAllMembers();
+            return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thành viên thành công!", members));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * POST /api/users
+     * Cấp tài khoản mới cho thành viên:
+     * - Mật khẩu đủ mạnh
+     * - Mã hóa AES
+     * - Không yêu cầu đổi mật khẩu lần đầu (mustChangePassword = false)
+     */
+    @PostMapping
+    public ResponseEntity<?> createMember(@Valid @RequestBody CreateMemberRequest req) {
+        try {
+            User createdUser = userService.createMember(req);
+            return ResponseEntity.ok(ApiResponse.success("Cấp tài khoản thành viên thành công!", createdUser));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * PUT /api/users/{id}
+     * Chỉnh sửa thông tin thành viên (Họ và tên, SĐT, Vai trò).
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateMember(@PathVariable Long id, @Valid @RequestBody UpdateMemberRequest req) {
+        try {
+            User updatedUser = userService.updateMember(id, req);
+            return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin thành viên thành công!", updatedUser));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * DELETE /api/users/{id}
+     * Xóa tài khoản thành viên khỏi hệ thống.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteMember(@PathVariable Long id) {
+        try {
+            userService.deleteMember(id);
+            return ResponseEntity.ok(ApiResponse.success("Xóa tài khoản thành viên thành công!", id));
         } catch (Exception e) {
             return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
         }

@@ -1,5 +1,7 @@
 package com.network.kanban.service;
 
+import com.network.kanban.dto.request.CreateMemberRequest;
+import com.network.kanban.dto.request.UpdateMemberRequest;
 import com.network.kanban.dto.response.LoginResponse;
 import com.network.kanban.model.User;
 import com.network.kanban.repository.UserRepository;
@@ -7,10 +9,13 @@ import com.network.kanban.security.EncryptionUtil;
 import com.network.kanban.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Sort;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +25,7 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final EncryptionUtil encryptionUtil;
     private final EmailService emailService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${jwt.expiration-ms:86400000}")
     private long defaultExpirationMs;
@@ -193,5 +199,126 @@ public class UserService {
         user.setResetOtpExpiry(null);
 
         userRepository.save(user);
+    }
+
+    /**
+     * Lấy toàn bộ danh sách thành viên trong CSDL (dữ liệu động)
+     */
+    public List<User> getAllMembers() {
+        return userRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
+    /**
+     * Cấp tài khoản mới cho thành viên:
+     * - Mật khẩu đủ mạnh (tối thiểu 8 ký tự, có chữ hoa, chữ thường, số, ký tự đặc biệt).
+     * - Mã hóa AES trước khi lưu vào CSDL.
+     * - Không yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên (mustChangePassword = false).
+     */
+    public User createMember(CreateMemberRequest req) {
+        String normalizedEmail = req.getEmail().trim().toLowerCase();
+
+        // 1. Kiểm tra email đã tồn tại chưa
+        if (userRepository.existsByEmail(normalizedEmail)) {
+            throw new RuntimeException("Email '" + normalizedEmail + "' đã tồn tại trên hệ thống!");
+        }
+
+        // 2. Kiểm tra mật khẩu mạnh
+        String password = req.getPassword();
+        if (password == null || password.length() < 8) {
+            throw new RuntimeException("Mật khẩu phải có tối thiểu 8 ký tự!");
+        }
+        // Regex mật khẩu mạnh: ít nhất 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt
+        String strongRegex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#^()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?]).{8,}$";
+        if (!password.matches(strongRegex)) {
+            throw new RuntimeException("Mật khẩu chưa đủ mạnh! Yêu cầu ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.");
+        }
+
+        // 3. Mã hóa mật khẩu bằng AES
+        String encryptedPassword = encryptionUtil.encrypt(password);
+
+        // 4. Thiết lập vai trò
+        String role = (req.getRole() != null && req.getRole().equalsIgnoreCase("admin")) ? "admin" : "user";
+
+        // 5. Tạo user mới (mustChangePassword = false)
+        User newUser = User.builder()
+                .fullName(req.getFullName().trim())
+                .email(normalizedEmail)
+                .password(encryptedPassword)
+                .phone(req.getPhone() != null ? req.getPhone().trim() : null)
+                .role(role)
+                .mustChangePassword(false) // Theo yêu cầu: không cần đổi mật khẩu lần đầu
+                .isDobLocked(false)
+                .isAddressLocked(false)
+                .build();
+
+        User savedUser = userRepository.save(newUser);
+
+        // 6. Gửi email thông báo tài khoản và mật khẩu khởi tạo cho người đó
+        emailService.sendAccountCreatedEmail(normalizedEmail, savedUser.getFullName(), password, role);
+
+        // 7. Bắn dữ liệu Real-time qua WebSocket tới kênh /topic/members
+        try {
+            messagingTemplate.convertAndSend("/topic/members", savedUser);
+            System.out.println("[WEBSOCKET] Đã broadcast thành viên mới tới /topic/members: " + savedUser.getEmail());
+        } catch (Exception e) {
+            System.err.println("[WEBSOCKET ERROR] Lỗi gửi socket: " + e.getMessage());
+        }
+
+        return savedUser;
+    }
+
+    /**
+     * Chỉnh sửa thông tin thành viên (Họ và tên, SĐT, Vai trò):
+     * - Lưu vào CSDL
+     * - Phát sự kiện Real-time qua WebSocket tới kênh /topic/members/updated
+     */
+    public User updateMember(Long id, UpdateMemberRequest req) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thành viên với ID: " + id));
+
+        // Cập nhật họ và tên
+        if (req.getFullName() != null && !req.getFullName().isBlank()) {
+            user.setFullName(req.getFullName().trim());
+        }
+
+        // Cập nhật số điện thoại
+        user.setPhone(req.getPhone() != null && !req.getPhone().isBlank() ? req.getPhone().trim() : null);
+
+        // Cập nhật vai trò nếu có
+        if (req.getRole() != null && !req.getRole().isBlank()) {
+            user.setRole(req.getRole().trim().toLowerCase());
+        }
+
+        User updatedUser = userRepository.save(user);
+
+        // Phát Socket thông báo cập nhật Real-time
+        try {
+            messagingTemplate.convertAndSend("/topic/members/updated", updatedUser);
+            System.out.println("[WEBSOCKET] Đã broadcast cập nhật thành viên: " + updatedUser.getFullName());
+        } catch (Exception e) {
+            System.err.println("[WEBSOCKET ERROR] Lỗi broadcast update: " + e.getMessage());
+        }
+
+        return updatedUser;
+    }
+
+    /**
+     * Xóa thành viên khỏi hệ thống:
+     * - Xóa trong CSDL
+     * - Phát sự kiện Real-time qua WebSocket tới kênh /topic/members/deleted
+     */
+    public void deleteMember(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thành viên với ID: " + id));
+
+        userRepository.delete(user);
+
+        // Phát Socket thông báo xóa Real-time
+        try {
+            messagingTemplate.convertAndSend("/topic/members/deleted", id);
+            System.out.println("[WEBSOCKET] Đã broadcast xóa thành viên ID: " + id);
+        } catch (Exception e) {
+            System.err.println("[WEBSOCKET ERROR] Lỗi broadcast delete: " + e.getMessage());
+        }
     }
 }
