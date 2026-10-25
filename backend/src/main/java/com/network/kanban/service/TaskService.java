@@ -44,6 +44,15 @@ public class TaskService {
     }
 
     /**
+     * Lấy danh sách nhiệm vụ được phân công cho một thành viên cụ thể.
+     */
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getMyTasks(Long userId) {
+        List<Task> tasks = taskRepository.findAllByAssigneeIdOrderByCreatedAtDesc(userId);
+        return tasks.stream().map(this::mapToTaskResponse).collect(Collectors.toList());
+    }
+
+    /**
      * Lấy chi tiết một task theo ID.
      */
     @Transactional(readOnly = true)

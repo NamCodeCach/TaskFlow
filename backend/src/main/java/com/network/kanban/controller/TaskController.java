@@ -34,6 +34,20 @@ public class TaskController {
     }
 
     /**
+     * GET /api/tasks/my-tasks?userId=...
+     * Lấy danh sách nhiệm vụ được phân công cho một thành viên
+     */
+    @GetMapping("/my-tasks")
+    public ResponseEntity<?> getMyTasks(@RequestParam Long userId) {
+        try {
+            List<TaskResponse> list = taskService.getMyTasks(userId);
+            return ResponseEntity.ok(ApiResponse.success("Lấy danh sách nhiệm vụ của bạn thành công!", list));
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * GET /api/tasks/{id}
      * Lấy chi tiết một task
      */
