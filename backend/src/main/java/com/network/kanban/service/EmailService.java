@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,7 +27,6 @@ public class EmailService {
      */
     public void sendOtpEmail(String toEmail, String otp) {
         try {
-            // Kiểm tra xem cấu hình email đã được điền chưa
             if (fromEmail == null || fromEmail.isBlank() || fromEmail.contains("your_email")) {
                 throw new RuntimeException("Chưa cấu hình tài khoản Gmail trong application.properties!");
             }
@@ -69,11 +69,6 @@ public class EmailService {
 
     /**
      * Gửi email thông báo cấp tài khoản mới kèm thông tin đăng nhập
-     *
-     * @param toEmail  địa chỉ email người nhận
-     * @param fullName họ và tên thành viên
-     * @param password mật khẩu khởi tạo (plaintext)
-     * @param role     vai trò ("admin" hoặc "user")
      */
     public void sendAccountCreatedEmail(String toEmail, String fullName, String password, String role) {
         try {
@@ -118,6 +113,74 @@ public class EmailService {
             log.info("[ACCOUNT EMAIL SENT] Đã gửi thông tin tài khoản thành công tới: {}", toEmail);
         } catch (Exception e) {
             log.error("[ACCOUNT EMAIL ERROR] Lỗi khi gửi email tài khoản tới {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo khi được phân công nhiệm vụ mới (chạy bất đồng bộ @Async)
+     *
+     * @param toEmail     địa chỉ email người nhận
+     * @param fullName    họ tên thành viên
+     * @param taskCode    mã task (ví dụ: TF-108)
+     * @param taskTitle   tiêu đề task
+     * @param category    danh mục
+     * @param deadline    hạn nộp đã định dạng
+     * @param description mô tả yêu cầu công việc
+     */
+    @Async
+    public void sendTaskAssignedEmail(String toEmail, String fullName, String taskCode,
+                                     String taskTitle, String category, String deadline,
+                                     String description) {
+        try {
+            if (fromEmail == null || fromEmail.isBlank() || fromEmail.contains("your_email")) {
+                log.warn("[EMAIL CONFIG] Chưa cấu hình tài khoản Gmail gửi tin!");
+                return;
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "TaskFlow Management");
+            helper.setTo(toEmail);
+            helper.setSubject("[TaskFlow] Bạn được phân công nhiệm vụ mới: " + taskTitle);
+
+            String safeCategory = (category != null && !category.isBlank()) ? category : "Chung";
+            String safeDeadline = (deadline != null && !deadline.isBlank()) ? deadline : "Không có thời hạn";
+            String safeDesc = (description != null && !description.isBlank())
+                    ? description.replace("\n", "<br/>")
+                    : "Không có mô tả chi tiết kèm theo.";
+
+            String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">"
+                    + "  <div style=\"text-align: center; margin-bottom: 24px;\">"
+                    + "    <h2 style=\"color: #4f46e5; margin: 0; font-size: 24px;\">TaskFlow</h2>"
+                    + "    <p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">Thông báo phân công nhiệm vụ mới</p>"
+                    + "  </div>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Xin chào <strong>" + fullName + "</strong>,</p>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Bạn vừa được phân công một nhiệm vụ mới trên hệ thống <strong>TaskFlow</strong>. Vui lòng xem thông tin chi tiết dưới đây:</p>"
+                    + "  <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #4f46e5; border-radius: 8px; padding: 18px; margin: 20px 0;\">"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📌 <strong>Mã nhiệm vụ:</strong> <span style=\"background-color: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 4px; font-weight: bold;\">" + taskCode + "</span></p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📝 <strong>Tiêu đề:</strong> <strong style=\"color: #1e293b;\">" + taskTitle + "</strong></p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📂 <strong>Danh mục:</strong> " + safeCategory + "</p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">⏰ <strong>Hạn nộp (Deadline):</strong> <span style=\"color: #dc2626; font-weight: bold;\">" + safeDeadline + "</span></p>"
+                    + "    <div style=\"margin-top: 12px; padding-top: 10px; border-top: 1px dashed #cbd5e1;\">"
+                    + "      <p style=\"margin: 0 0 6px 0; color: #64748b; font-size: 13px; font-weight: bold;\">Yêu cầu / Mô tả công việc:</p>"
+                    + "      <div style=\"color: #334155; font-size: 13.5px; line-height: 1.6; background-color: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #f1f5f9;\">" + safeDesc + "</div>"
+                    + "    </div>"
+                    + "  </div>"
+                    + "  <div style=\"text-align: center; margin: 24px 0;\">"
+                    + "    <a href=\"http://localhost:3000/user/task/list\" style=\"background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;\">Xem chi tiết & Nộp bài</a>"
+                    + "  </div>"
+                    + "  <p style=\"color: #64748b; font-size: 13px; line-height: 1.5;\">⚠️ Vui lòng theo dõi tiến độ và hoàn thành trước hạn nộp.</p>"
+                    + "  <hr style=\"border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;\" />"
+                    + "  <p style=\"color: #94a3b8; font-size: 12px; text-align: center; margin: 0;\">© 2026 TaskFlow. All rights reserved.</p>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("[TASK EMAIL SENT] Đã gửi thông báo nhiệm vụ {} thành công tới: {}", taskCode, toEmail);
+        } catch (Exception e) {
+            log.error("[TASK EMAIL ERROR] Lỗi khi gửi email nhiệm vụ tới {}: {}", toEmail, e.getMessage());
         }
     }
 }
