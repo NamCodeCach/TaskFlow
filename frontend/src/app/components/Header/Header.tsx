@@ -41,7 +41,7 @@ export const Header = () => {
 
           // Tự động đồng bộ thông tin mới nhất từ CSDL để sửa lỗi font cũ trong localStorage
           if (parsed.email) {
-            authService.getAccount(parsed.email).then((res) => {
+            authService.getAccount(parsed.email).then((res: any) => {
               if (res.code === "success" && res.data) {
                 const updated: CurrentUser = {
                   userId: res.data.id || parsed.userId,
