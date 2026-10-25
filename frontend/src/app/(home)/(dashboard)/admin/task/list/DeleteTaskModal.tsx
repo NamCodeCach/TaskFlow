@@ -61,8 +61,9 @@ export const DeleteTaskModal = ({ isOpen, task, onClose, onSuccess }: DeleteTask
             <strong className="text-slate-800 font-semibold">{task.taskCode}</strong> - "
             <span className="text-slate-700">{task.title}</span>"?
           </p>
-          <p className="text-[11px] text-red-500 mt-2 font-medium">
-            ⚠️ Thao tác này sẽ xóa vĩnh viễn nhiệm vụ và toàn bộ bài nộp liên quan!
+          <p className="flex items-center justify-center gap-1 text-[11px] text-red-500 mt-2 font-medium">
+            <LuTriangleAlert size={13} className="shrink-0 text-red-500" />
+            <span>Thao tác này sẽ xóa vĩnh viễn nhiệm vụ và toàn bộ bài nộp liên quan!</span>
           </p>
         </div>
 

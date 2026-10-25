@@ -13,6 +13,7 @@ import {
   LuClock,
   LuTriangleAlert,
   LuFolder,
+  LuX,
 } from "react-icons/lu";
 import { toast, Toaster } from "sonner";
 import { taskService, TaskItem, Assignee } from "@/src/app/services/taskService";
@@ -374,9 +375,10 @@ export default function AdminTaskListPage() {
                   <button
                     type="button"
                     onClick={() => setDateFilter("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Xóa bộ lọc ngày"
                   >
-                    ×
+                    <LuX size={14} />
                   </button>
                 )}
               </div>

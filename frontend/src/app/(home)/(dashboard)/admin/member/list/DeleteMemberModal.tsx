@@ -61,8 +61,9 @@ export const DeleteMemberModal = ({ isOpen, member, onClose, onSuccess }: Delete
             <strong className="text-slate-800 font-semibold">{member.fullName}</strong> (
             <span className="font-mono text-slate-700">{member.email}</span>)?
           </p>
-          <p className="text-[11px] text-red-500 mt-2 font-medium">
-            ⚠️ Thao tác này sẽ xóa vĩnh viễn tài khoản và không thể hoàn tác!
+          <p className="flex items-center justify-center gap-1 text-[11px] text-red-500 mt-2 font-medium">
+            <LuTriangleAlert size={13} className="shrink-0 text-red-500" />
+            <span>Thao tác này sẽ xóa vĩnh viễn tài khoản và không thể hoàn tác!</span>
           </p>
         </div>
 
