@@ -55,6 +55,17 @@ export const taskService = {
   },
 
   /**
+   * Lấy danh sách nhiệm vụ được phân công cho một thành viên cụ thể
+   */
+  async getMyTasks(userId: number): Promise<ApiResponse<TaskItem[]>> {
+    const res = await fetch(`${API_BASE}/api/tasks/my-tasks?userId=${userId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    return res.json();
+  },
+
+  /**
    * Lấy chi tiết một nhiệm vụ
    */
   async getById(id: number): Promise<ApiResponse<TaskItem>> {
