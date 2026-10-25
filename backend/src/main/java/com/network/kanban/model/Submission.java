@@ -30,9 +30,13 @@ public class Submission {
     @JoinColumn(name = "submitted_by_id", nullable = false)
     private User submittedBy;
 
-    /** Ghi chú kèm theo khi nộp */
+    /** Ghi chú kèm theo khi nộp của thành viên */
     @Column(columnDefinition = "NVARCHAR(MAX)")
     private String note;
+
+    /** Nhận xét / Lý do yêu cầu nộp lại từ Admin */
+    @Column(columnDefinition = "NVARCHAR(MAX)")
+    private String adminFeedback;
 
     /**
      * Đường dẫn file đã lưu trên filesystem

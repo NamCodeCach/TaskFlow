@@ -65,13 +65,20 @@ public class SubmissionController {
      *
      * @param id      id bài nộp
      * @param adminId id admin (optional)
+     * @param reason  lý do yêu cầu nộp lại (query param hoặc body)
      */
     @PutMapping("/{id}/resubmit")
     public ResponseEntity<?> resubmit(
             @PathVariable Long id,
-            @RequestParam(required = false) Long adminId) {
+            @RequestParam(required = false) Long adminId,
+            @RequestParam(required = false) String reason,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
         try {
-            SubmissionResponse updated = submissionService.requestResubmit(id, adminId);
+            String feedbackReason = reason;
+            if ((feedbackReason == null || feedbackReason.isBlank()) && body != null && body.containsKey("reason")) {
+                feedbackReason = body.get("reason");
+            }
+            SubmissionResponse updated = submissionService.requestResubmit(id, adminId, feedbackReason);
             return ResponseEntity.ok(ApiResponse.success("Đã yêu cầu nộp lại!", updated));
         } catch (Exception e) {
             return ResponseEntity.ok(ApiResponse.error(e.getMessage()));

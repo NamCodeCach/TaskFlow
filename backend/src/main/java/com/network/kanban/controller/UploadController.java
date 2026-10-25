@@ -1,15 +1,19 @@
 package com.network.kanban.controller;
 
 import com.network.kanban.dto.response.ApiResponse;
+import com.network.kanban.dto.response.SubmissionResponse;
 import com.network.kanban.model.Submission;
 import com.network.kanban.model.Task;
 import com.network.kanban.model.User;
 import com.network.kanban.repository.SubmissionRepository;
 import com.network.kanban.repository.TaskRepository;
 import com.network.kanban.repository.UserRepository;
+import com.network.kanban.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,11 +41,14 @@ import java.util.UUID;
 @RequestMapping("/api/upload")
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 @RequiredArgsConstructor
+@Slf4j
 public class UploadController {
 
     private final SubmissionRepository submissionRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final SubmissionService submissionService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -84,7 +91,7 @@ public class UploadController {
             Submission submission = Submission.builder()
                     .task(task)
                     .submittedBy(user)
-                    .note(note.trim())
+                    .note(note != null ? note.trim() : "")
                     .filePath(dest.toString())
                     .originalFileName(originalName)
                     .fileSize(fileSize)
@@ -92,6 +99,21 @@ public class UploadController {
                     .build();
 
             Submission saved = submissionRepository.save(submission);
+
+            // Cập nhật trạng thái task nếu đang TODO
+            if ("TODO".equalsIgnoreCase(task.getStatus()) || "pending".equalsIgnoreCase(task.getStatus())) {
+                task.setStatus("submitted");
+                taskRepository.save(task);
+            }
+
+            // 5. Broadcast Real-time qua STOMP WebSocket tới /topic/submissions
+            try {
+                SubmissionResponse responseDto = submissionService.toResponse(saved);
+                messagingTemplate.convertAndSend("/topic/submissions", responseDto);
+                log.info("[WEBSOCKET] Đã broadcast bài nộp mới #{} tới /topic/submissions", saved.getId());
+            } catch (Exception wsEx) {
+                log.error("[WEBSOCKET ERROR] Lỗi broadcast bài nộp mới: {}", wsEx.getMessage());
+            }
 
             return ResponseEntity.ok(ApiResponse.success(
                     "Nộp bài thành công!",

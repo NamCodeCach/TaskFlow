@@ -10,6 +10,7 @@ public class SubmissionResponse {
     private Long id;
 
     // ── Từ bảng tasks ─────────────────────────────────────────────────────
+    private Long taskId;
     private String taskCode;
     private String taskTitle;
     private String taskCategory;
@@ -17,6 +18,7 @@ public class SubmissionResponse {
     private String deadline;
 
     // ── Từ bảng users (người nộp) ─────────────────────────────────────────
+    private Long submittedById;
     private String submittedByName;
     /** 2 chữ cái viết tắt: "TL", "QM" */
     private String submittedByInitials;
@@ -24,6 +26,7 @@ public class SubmissionResponse {
 
     // ── Từ bảng submissions ───────────────────────────────────────────────
     private String note;
+    private String adminFeedback;
     /** URL tải file: /api/submissions/{id}/download */
     private String filePath;
     private String originalFileName;
@@ -39,6 +42,9 @@ public class SubmissionResponse {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
+    public Long getTaskId() { return taskId; }
+    public void setTaskId(Long taskId) { this.taskId = taskId; }
+
     public String getTaskCode() { return taskCode; }
     public void setTaskCode(String taskCode) { this.taskCode = taskCode; }
 
@@ -51,6 +57,9 @@ public class SubmissionResponse {
     public String getDeadline() { return deadline; }
     public void setDeadline(String deadline) { this.deadline = deadline; }
 
+    public Long getSubmittedById() { return submittedById; }
+    public void setSubmittedById(Long submittedById) { this.submittedById = submittedById; }
+
     public String getSubmittedByName() { return submittedByName; }
     public void setSubmittedByName(String submittedByName) { this.submittedByName = submittedByName; }
 
@@ -62,6 +71,9 @@ public class SubmissionResponse {
 
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    public String getAdminFeedback() { return adminFeedback; }
+    public void setAdminFeedback(String adminFeedback) { this.adminFeedback = adminFeedback; }
 
     public String getFilePath() { return filePath; }
     public void setFilePath(String filePath) { this.filePath = filePath; }

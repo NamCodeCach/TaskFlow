@@ -5,11 +5,14 @@ import com.network.kanban.model.Submission;
 import com.network.kanban.model.Task;
 import com.network.kanban.model.User;
 import com.network.kanban.repository.SubmissionRepository;
+import com.network.kanban.repository.TaskRepository;
 import com.network.kanban.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,11 +26,15 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional          // ← mọi method đều chạy trong 1 transaction → LAZY load hoạt động đúng
 public class SubmissionService {
 
     private final SubmissionRepository submissionRepository;
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
+    private final EmailService emailService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -63,19 +70,53 @@ public class SubmissionService {
                     .ifPresent(submission::setReviewedBy);
         }
 
+        Task task = submission.getTask();
+        if (task != null) {
+            List<Submission> allSubs = submissionRepository.findAllByTaskId(task.getId());
+            boolean allApproved = allSubs.stream()
+                    .allMatch(s -> s.getId().equals(submission.getId()) || "approved".equalsIgnoreCase(s.getStatus()));
+            if (allApproved && !allSubs.isEmpty()) {
+                task.setStatus("completed");
+                taskRepository.save(task);
+            }
+        }
+
         Submission saved = submissionRepository.save(submission);
-        return toResponse(saved);
+        SubmissionResponse response = toResponse(saved);
+
+        // 1. Broadcast Real-time qua STOMP WebSocket
+        try {
+            messagingTemplate.convertAndSend("/topic/submissions", response);
+            messagingTemplate.convertAndSend("/topic/submissions/reviewed", response);
+            log.info("[WEBSOCKET] Đã broadcast duyệt bài nộp #{} tới /topic/submissions & /topic/submissions/reviewed", saved.getId());
+        } catch (Exception e) {
+            log.error("[WEBSOCKET ERROR] Lỗi broadcast duyệt bài: {}", e.getMessage());
+        }
+
+        // 2. Gửi email thông báo tự động cho thành viên
+        User submitter = submission.getSubmittedBy();
+        if (submitter != null && submitter.getEmail() != null) {
+            emailService.sendSubmissionApprovedEmail(
+                    submitter.getEmail(),
+                    submitter.getFullName(),
+                    task != null ? task.getTaskCode() : "",
+                    task != null ? task.getTitle() : ""
+            );
+        }
+
+        return response;
     }
 
     // =========================================================================
     // PUT – Admin yêu cầu nộp lại
     // =========================================================================
 
-    public SubmissionResponse requestResubmit(Long id, Long adminUserId) {
+    public SubmissionResponse requestResubmit(Long id, Long adminUserId, String reason) {
         Submission submission = submissionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bài nộp #" + id));
 
         submission.setStatus("resubmit_requested");
+        submission.setAdminFeedback(reason != null ? reason.trim() : "");
         submission.setReviewedAt(LocalDateTime.now());
 
         if (adminUserId != null) {
@@ -83,8 +124,37 @@ public class SubmissionService {
                     .ifPresent(submission::setReviewedBy);
         }
 
+        Task task = submission.getTask();
+        if (task != null && "completed".equalsIgnoreCase(task.getStatus())) {
+            task.setStatus("submitted");
+            taskRepository.save(task);
+        }
+
         Submission saved = submissionRepository.save(submission);
-        return toResponse(saved);
+        SubmissionResponse response = toResponse(saved);
+
+        // 1. Broadcast Real-time qua STOMP WebSocket
+        try {
+            messagingTemplate.convertAndSend("/topic/submissions", response);
+            messagingTemplate.convertAndSend("/topic/submissions/reviewed", response);
+            log.info("[WEBSOCKET] Đã broadcast yêu cầu nộp lại bài nộp #{} tới /topic/submissions & /topic/submissions/reviewed", saved.getId());
+        } catch (Exception e) {
+            log.error("[WEBSOCKET ERROR] Lỗi broadcast yêu cầu nộp lại: {}", e.getMessage());
+        }
+
+        // 2. Gửi email thông báo kèm lý do cho thành viên
+        User submitter = submission.getSubmittedBy();
+        if (submitter != null && submitter.getEmail() != null) {
+            emailService.sendResubmitRequestedEmail(
+                    submitter.getEmail(),
+                    submitter.getFullName(),
+                    task != null ? task.getTaskCode() : "",
+                    task != null ? task.getTitle() : "",
+                    reason
+            );
+        }
+
+        return response;
     }
 
     // =========================================================================
@@ -117,13 +187,14 @@ public class SubmissionService {
     // Helper – Map entity → DTO (phải gọi trong transaction để LAZY load được)
     // =========================================================================
 
-    private SubmissionResponse toResponse(Submission s) {
+    public SubmissionResponse toResponse(Submission s) {
         SubmissionResponse dto = new SubmissionResponse();
         dto.setId(s.getId());
 
         // Task fields (LAZY – cần transaction đang mở)
         Task task = s.getTask();
         if (task != null) {
+            dto.setTaskId(task.getId());
             dto.setTaskCode(task.getTaskCode());
             dto.setTaskTitle(task.getTitle());
             dto.setTaskCategory(task.getCategory());
@@ -134,6 +205,7 @@ public class SubmissionService {
         // User (người nộp) fields (LAZY – cần transaction đang mở)
         User submitter = s.getSubmittedBy();
         if (submitter != null) {
+            dto.setSubmittedById(submitter.getId());
             dto.setSubmittedByName(submitter.getFullName());
             dto.setSubmittedByEmail(submitter.getEmail());
             dto.setSubmittedByInitials(buildInitials(submitter.getFullName()));
@@ -141,6 +213,7 @@ public class SubmissionService {
 
         // Submission fields
         dto.setNote(s.getNote());
+        dto.setAdminFeedback(s.getAdminFeedback());
         dto.setFilePath("/api/submissions/" + s.getId() + "/download");
         dto.setOriginalFileName(s.getOriginalFileName());
         dto.setFileSize(s.getFileSize());

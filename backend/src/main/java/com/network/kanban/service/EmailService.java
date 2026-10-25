@@ -183,4 +183,115 @@ public class EmailService {
             log.error("[TASK EMAIL ERROR] Lỗi khi gửi email nhiệm vụ tới {}: {}", toEmail, e.getMessage());
         }
     }
+
+    /**
+     * Gửi email thông báo khi Admin duyệt hoàn thành bài nộp (@Async)
+     *
+     * @param toEmail   địa chỉ email người nhận
+     * @param fullName  họ tên thành viên
+     * @param taskCode  mã nhiệm vụ
+     * @param taskTitle tiêu đề nhiệm vụ
+     */
+    @Async
+    public void sendSubmissionApprovedEmail(String toEmail, String fullName, String taskCode, String taskTitle) {
+        try {
+            if (fromEmail == null || fromEmail.isBlank() || fromEmail.contains("your_email")) {
+                log.warn("[EMAIL CONFIG] Chưa cấu hình tài khoản Gmail gửi tin!");
+                return;
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "TaskFlow Management");
+            helper.setTo(toEmail);
+            helper.setSubject("[TaskFlow] Bài nộp của bạn đã được duyệt hoàn thành: " + taskTitle);
+
+            String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">"
+                    + "  <div style=\"text-align: center; margin-bottom: 24px;\">"
+                    + "    <h2 style=\"color: #059669; margin: 0; font-size: 24px;\">TaskFlow</h2>"
+                    + "    <p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">Thông báo kết quả duyệt bài nộp</p>"
+                    + "  </div>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Xin chào <strong>" + fullName + "</strong>,</p>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Quản trị viên đã xem xét và <strong style=\"color: #059669;\">Duyệt hoàn thành</strong> bài nộp của bạn cho nhiệm vụ sau:</p>"
+                    + "  <div style=\"background-color: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 8px; padding: 18px; margin: 20px 0;\">"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📌 <strong>Mã nhiệm vụ:</strong> <span style=\"background-color: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: bold;\">" + taskCode + "</span></p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📝 <strong>Tiêu đề:</strong> <strong style=\"color: #1e293b;\">" + taskTitle + "</strong></p>"
+                    + "    <p style=\"margin: 6px 0; color: #15803d; font-size: 14px; font-weight: bold;\">🎉 Trạng thái: Đã duyệt hoàn thành</p>"
+                    + "  </div>"
+                    + "  <div style=\"text-align: center; margin: 24px 0;\">"
+                    + "    <a href=\"http://localhost:3000/user/task/list\" style=\"background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;\">Xem danh sách nhiệm vụ</a>"
+                    + "  </div>"
+                    + "  <hr style=\"border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;\" />"
+                    + "  <p style=\"color: #94a3b8; font-size: 12px; text-align: center; margin: 0;\">© 2026 TaskFlow. All rights reserved.</p>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("[SUBMISSION APPROVED EMAIL SENT] Đã gửi thông báo duyệt bài {} tới: {}", taskCode, toEmail);
+        } catch (Exception e) {
+            log.error("[SUBMISSION APPROVED EMAIL ERROR] Lỗi khi gửi email duyệt bài tới {}: {}", toEmail, e.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo khi Admin yêu cầu nộp lại bài (@Async)
+     *
+     * @param toEmail   địa chỉ email người nhận
+     * @param fullName  họ tên thành viên
+     * @param taskCode  mã nhiệm vụ
+     * @param taskTitle tiêu đề nhiệm vụ
+     * @param reason    lý do yêu cầu nộp lại từ Admin
+     */
+    @Async
+    public void sendResubmitRequestedEmail(String toEmail, String fullName, String taskCode, String taskTitle, String reason) {
+        try {
+            if (fromEmail == null || fromEmail.isBlank() || fromEmail.contains("your_email")) {
+                log.warn("[EMAIL CONFIG] Chưa cấu hình tài khoản Gmail gửi tin!");
+                return;
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "TaskFlow Management");
+            helper.setTo(toEmail);
+            helper.setSubject("[TaskFlow] Yêu cầu nộp lại bài: " + taskTitle);
+
+            String safeReason = (reason != null && !reason.isBlank())
+                    ? reason.replace("\n", "<br/>")
+                    : "Quản trị viên yêu cầu bổ sung hoặc chỉnh sửa lại nội dung bài nộp.";
+
+            String htmlContent = "<div style=\"font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;\">"
+                    + "  <div style=\"text-align: center; margin-bottom: 24px;\">"
+                    + "    <h2 style=\"color: #e11d48; margin: 0; font-size: 24px;\">TaskFlow</h2>"
+                    + "    <p style=\"color: #64748b; font-size: 14px; margin-top: 4px;\">Yêu cầu nộp lại bài làm</p>"
+                    + "  </div>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Xin chào <strong>" + fullName + "</strong>,</p>"
+                    + "  <p style=\"color: #334155; font-size: 15px; line-height: 1.5;\">Bài nộp của bạn cho nhiệm vụ <strong>[" + taskCode + "] " + taskTitle + "</strong> đã được Quản trị viên xem xét và <strong style=\"color: #e11d48;\">yêu cầu nộp lại</strong>.</p>"
+                    + "  <div style=\"background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 8px; padding: 18px; margin: 20px 0;\">"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📌 <strong>Mã nhiệm vụ:</strong> <span style=\"background-color: #ffe4e6; color: #be123c; padding: 2px 8px; border-radius: 4px; font-weight: bold;\">" + taskCode + "</span></p>"
+                    + "    <p style=\"margin: 6px 0; color: #475569; font-size: 14px;\">📝 <strong>Tiêu đề:</strong> <strong style=\"color: #1e293b;\">" + taskTitle + "</strong></p>"
+                    + "    <div style=\"margin-top: 12px; padding-top: 10px; border-top: 1px dashed #f43f5e;\">"
+                    + "      <p style=\"margin: 0 0 6px 0; color: #be123c; font-size: 13.5px; font-weight: bold;\">Lý do / Ghi chú phản hồi từ Quản trị viên:</p>"
+                    + "      <div style=\"color: #881337; font-size: 13.5px; line-height: 1.6; background-color: #ffffff; padding: 10px; border-radius: 6px; border: 1px solid #ffe4e6;\">" + safeReason + "</div>"
+                    + "    </div>"
+                    + "  </div>"
+                    + "  <div style=\"text-align: center; margin: 24px 0;\">"
+                    + "    <a href=\"http://localhost:3000/user/task/list\" style=\"background-color: #e11d48; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;\">Nộp lại bài ngay</a>"
+                    + "  </div>"
+                    + "  <p style=\"color: #64748b; font-size: 13px; line-height: 1.5;\">⚠️ Vui lòng hoàn thiện và nộp lại bài theo yêu cầu của Quản trị viên.</p>"
+                    + "  <hr style=\"border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;\" />"
+                    + "  <p style=\"color: #94a3b8; font-size: 12px; text-align: center; margin: 0;\">© 2026 TaskFlow. All rights reserved.</p>"
+                    + "</div>";
+
+            helper.setText(htmlContent, true);
+
+            mailSender.send(message);
+            log.info("[RESUBMIT EMAIL SENT] Đã gửi yêu cầu nộp lại bài {} tới: {}", taskCode, toEmail);
+        } catch (Exception e) {
+            log.error("[RESUBMIT EMAIL ERROR] Lỗi khi gửi email yêu cầu nộp lại tới {}: {}", toEmail, e.getMessage());
+        }
+    }
 }
