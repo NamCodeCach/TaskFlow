@@ -13,14 +13,17 @@ export type SubmissionStatus = "submitted" | "approved" | "resubmit_requested";
  */
 export interface SubmissionItem {
   id: number;
+  taskId?: number;
   taskCode: string;
   taskTitle: string;
   taskCategory: string;
   deadline: string;
+  submittedById?: number;
   submittedByName: string;
   submittedByInitials: string;
   submittedByEmail: string;
   note: string;
+  adminFeedback?: string;
   filePath: string;
   originalFileName: string;
   fileSize: string;

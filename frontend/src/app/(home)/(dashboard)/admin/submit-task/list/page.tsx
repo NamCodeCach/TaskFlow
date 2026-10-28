@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { Client } from "@stomp/stompjs";
 import {
   LuSearch,
   LuChevronDown,
   LuFilterX,
   LuRefreshCw,
+  LuCheck,
+  LuTriangleAlert,
+  LuX,
+  LuLoader,
+  LuRadio,
 } from "react-icons/lu";
 import SubmissionCard from "./SubmissionCard";
 import {
@@ -40,7 +46,7 @@ export default function AdminSubmitTaskListPage() {
     return () => clearTimeout(timer);
   }, [notification]);
 
-  // ── Lấy danh sách bài nộp từ API thực tế ────────────────────────────────
+  // ── 1. Lấy danh sách bài nộp từ API thực tế ────────────────────────────
   const fetchSubmissions = async () => {
     setLoading(true);
     setError(null);
@@ -68,7 +74,58 @@ export default function AdminSubmitTaskListPage() {
     fetchSubmissions();
   }, []);
 
-  // ── Cập nhật trạng thái tức thì sau khi bấm Duyệt / Yêu cầu nộp lại ─────
+  // ── 2. Kết nối STOMP WebSocket để nhận bài nộp & trạng thái Real-time ──
+  useEffect(() => {
+    const stompClient = new Client({
+      brokerURL: "ws://localhost:8080/ws",
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: () => {
+        stompClient.subscribe("/topic/submissions", (message) => {
+          try {
+            const incoming: SubmissionItem = JSON.parse(message.body);
+            if (!incoming || !incoming.id) return;
+
+            setSubmissions((prev) => {
+              const index = prev.findIndex((s) => s.id === incoming.id);
+              if (index >= 0) {
+                const next = [...prev];
+                next[index] = incoming;
+                return next;
+              } else {
+                return [incoming, ...prev];
+              }
+            });
+
+            showNotification(
+              "success",
+              `Cập nhật bài nộp: [${incoming.taskCode}] ${incoming.submittedByName} (${
+                incoming.status === "approved"
+                  ? "Đã duyệt"
+                  : incoming.status === "resubmit_requested"
+                  ? "Yêu cầu nộp lại"
+                  : "Mới nộp"
+              })`
+            );
+          } catch (e) {
+            console.error("[WS SUBMISSION PARSE ERROR]", e);
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error("[STOMP ERROR]", frame.headers["message"]);
+      },
+    });
+
+    stompClient.activate();
+
+    return () => {
+      stompClient.deactivate();
+    };
+  }, []);
+
+  // ── 3. Cập nhật trạng thái tức thì sau khi bấm Duyệt / Yêu cầu nộp lại ──
   const handleStatusChange = (
     id: number,
     newStatus: SubmissionStatus,
@@ -82,13 +139,13 @@ export default function AdminSubmitTaskListPage() {
     showNotification("success", message);
   };
 
-  // ── Đặt lại bộ lọc ─────────────────────────────────────────────────────
+  // ── 4. Đặt lại bộ lọc ──────────────────────────────────────────────────
   const handleResetFilters = () => {
     setSearch("");
     setStatusFilter("ALL");
   };
 
-  // ── Lọc danh sách bài nộp ──────────────────────────────────────────────
+  // ── 5. Lọc danh sách bài nộp ───────────────────────────────────────────
   const filteredSubmissions = useMemo(() => {
     const s = search.trim().toLowerCase();
     return submissions.filter((sub) => {
@@ -112,32 +169,9 @@ export default function AdminSubmitTaskListPage() {
       {notification && (
         <div className="fixed right-6 top-24 z-50 flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg transition-all animate-in fade-in slide-in-from-top-2">
           {notification.type === "success" ? (
-            <svg
-              className="h-5 w-5 text-emerald-600 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
+            <LuCheck className="h-5 w-5 text-emerald-600 shrink-0" />
           ) : (
-            <svg
-              className="h-5 w-5 text-rose-600 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+            <LuTriangleAlert className="h-5 w-5 text-rose-600 shrink-0" />
           )}
           <span className="text-xs font-semibold text-slate-700">
             {notification.text}
@@ -147,18 +181,7 @@ export default function AdminSubmitTaskListPage() {
             onClick={() => setNotification(null)}
             className="ml-2 text-slate-400 hover:text-slate-600 cursor-pointer"
           >
-            <svg
-              className="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <LuX size={14} />
           </button>
         </div>
       )}
@@ -166,9 +189,15 @@ export default function AdminSubmitTaskListPage() {
       {/* Header trang */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-[28px] font-bold text-text">Quản lý bài nộp</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-[28px] font-bold text-text">Quản lý bài nộp</h3>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
+              <LuRadio size={12} className="animate-pulse text-emerald-600" />
+              Real-time
+            </span>
+          </div>
           <p className="mt-1 text-xs text-slate-500">
-            Xem tài liệu, phản hồi và duyệt kết quả làm việc của các thành viên.
+            Xem tài liệu, phản hồi và duyệt kết quả làm việc của các thành viên theo thời gian thực.
           </p>
         </div>
         <button
@@ -229,19 +258,7 @@ export default function AdminSubmitTaskListPage() {
       {error && (
         <div className="mt-4 flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
           <div className="flex items-center gap-2">
-            <svg
-              className="h-4 w-4 shrink-0 text-rose-600"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+            <LuTriangleAlert className="h-4 w-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
           <button
@@ -257,7 +274,7 @@ export default function AdminSubmitTaskListPage() {
       {/* Loading */}
       {loading && (
         <div className="mt-12 flex flex-col items-center justify-center gap-3">
-          <span className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-main" />
+          <LuLoader className="h-8 w-8 animate-spin text-main" />
           <p className="text-xs text-slate-400">Đang tải danh sách bài nộp từ hệ thống...</p>
         </div>
       )}
