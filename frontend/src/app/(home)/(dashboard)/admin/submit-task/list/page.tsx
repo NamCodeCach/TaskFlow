@@ -16,12 +16,7 @@ import {
   LuRadio,
 } from "react-icons/lu";
 import SubmissionCard from "./SubmissionCard";
-import {
-  API_BASE,
-  ApiResponse,
-  SubmissionItem,
-  SubmissionStatus,
-} from "./types";
+import { API_BASE, ApiResponse, SubmissionItem, SubmissionStatus } from "./types";
 
 export default function AdminSubmitTaskListPage() {
   const [submissions, setSubmissions] = useState<SubmissionItem[]>([]);
@@ -66,7 +61,9 @@ export default function AdminSubmitTaskListPage() {
         setError(json.message || "Không thể tải danh sách bài nộp.");
       }
     } catch {
-      setError("Không thể kết nối đến máy chủ backend (http://localhost:8080). Hãy đảm bảo backend đang chạy.");
+      setError(
+        "Không thể kết nối đến máy chủ backend (http://localhost:8080). Hãy đảm bảo backend đang chạy.",
+      );
     } finally {
       setLoading(false);
     }
@@ -106,9 +103,9 @@ export default function AdminSubmitTaskListPage() {
                 incoming.status === "approved"
                   ? "Đã duyệt"
                   : incoming.status === "resubmit_requested"
-                  ? "Yêu cầu nộp lại"
-                  : "Mới nộp"
-              })`
+                    ? "Yêu cầu nộp lại"
+                    : "Mới nộp"
+              })`,
             );
           } catch (e) {
             console.error("[WS SUBMISSION PARSE ERROR]", e);
@@ -128,15 +125,9 @@ export default function AdminSubmitTaskListPage() {
   }, []);
 
   // ── 3. Cập nhật trạng thái tức thì sau khi bấm Duyệt / Yêu cầu nộp lại ──
-  const handleStatusChange = (
-    id: number,
-    newStatus: SubmissionStatus,
-    message: string,
-  ) => {
+  const handleStatusChange = (id: number, newStatus: SubmissionStatus, message: string) => {
     setSubmissions((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: newStatus } : item,
-      ),
+      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item)),
     );
     showNotification("success", message);
   };
@@ -158,8 +149,7 @@ export default function AdminSubmitTaskListPage() {
         (sub.taskTitle && sub.taskTitle.toLowerCase().includes(s)) ||
         (sub.originalFileName && sub.originalFileName.toLowerCase().includes(s));
 
-      const matchStatus =
-        statusFilter === "ALL" || sub.status === statusFilter;
+      const matchStatus = statusFilter === "ALL" || sub.status === statusFilter;
 
       return matchSearch && matchStatus;
     });
@@ -175,9 +165,7 @@ export default function AdminSubmitTaskListPage() {
           ) : (
             <LuTriangleAlert className="h-5 w-5 text-rose-600 shrink-0" />
           )}
-          <span className="text-xs font-semibold text-slate-700">
-            {notification.text}
-          </span>
+          <span className="text-xs font-semibold text-slate-700">{notification.text}</span>
           <button
             type="button"
             onClick={() => setNotification(null)}
@@ -193,10 +181,6 @@ export default function AdminSubmitTaskListPage() {
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-[28px] font-bold text-text">Quản lý bài nộp</h3>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-              <LuRadio size={12} className="animate-pulse text-emerald-600" />
-              Real-time
-            </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
             Xem tài liệu, phản hồi và duyệt kết quả làm việc của các thành viên theo thời gian thực.
