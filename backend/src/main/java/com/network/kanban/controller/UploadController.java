@@ -39,7 +39,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/upload")
-@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
+@CrossOrigin(origins = "https://47d275fm-3000.asse.devtunnels.ms/", allowCredentials = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class UploadController {
