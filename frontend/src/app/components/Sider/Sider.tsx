@@ -1,5 +1,7 @@
 "use client";
 
+import { API_BASE } from "@/app/config/api";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FaListCheck } from "react-icons/fa6";
@@ -77,7 +79,7 @@ export const Sider = () => {
         if (!u.email) return;
 
         // 2. GỌI API BACKEND ĐỂ ĐỒNG BỘ VÀ XÁC THỰC LẠI
-        fetch(`http://localhost:8080/api/users/account/${encodeURIComponent(u.email)}`, {
+        fetch(`${API_BASE}/api/users/account/${encodeURIComponent(u.email)}`, {
           credentials: "include",
         })
           .then((res) => {

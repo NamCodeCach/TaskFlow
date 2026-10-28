@@ -1,5 +1,7 @@
 "use client";
 
+import { API_BASE } from "@/app/config/api";
+
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -87,7 +89,7 @@ function TaskSubmitContent() {
         formData.append("note", note.trim());
       }
 
-      const res = await fetch("http://localhost:8080/api/upload/submit", {
+      const res = await fetch(`${API_BASE}/api/upload/submit`, {
         method: "POST",
         body: formData,
         credentials: "include",

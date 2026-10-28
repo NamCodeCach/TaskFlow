@@ -1,5 +1,7 @@
 "use client";
 
+import { WS_BASE } from "@/app/config/api";
+
 import { useEffect, useState, useMemo } from "react";
 import { Client } from "@stomp/stompjs";
 import {
@@ -59,7 +61,7 @@ export default function MemberListPage() {
 
     // 2. Kết nối WebSocket STOMP để nhận dữ liệu Real-time
     const stompClient = new Client({
-      brokerURL: "ws://localhost:8080/ws",
+      brokerURL: WS_BASE,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

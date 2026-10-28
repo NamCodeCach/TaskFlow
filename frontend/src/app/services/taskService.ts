@@ -40,7 +40,7 @@ export interface ApiResponse<T> {
   role?: string;
 }
 
-const API_BASE = "http://localhost:8080";
+import { API_BASE } from "@/app/config/api";
 
 export const taskService = {
   /**

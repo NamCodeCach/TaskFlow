@@ -1,5 +1,7 @@
 "use client";
 
+import { WS_BASE } from "@/app/config/api";
+
 import { useEffect, useState, useMemo } from "react";
 import { Client } from "@stomp/stompjs";
 import {
@@ -77,7 +79,7 @@ export default function AdminSubmitTaskListPage() {
   // ── 2. Kết nối STOMP WebSocket để nhận bài nộp & trạng thái Real-time ──
   useEffect(() => {
     const stompClient = new Client({
-      brokerURL: "ws://localhost:8080/ws",
+      brokerURL: WS_BASE,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

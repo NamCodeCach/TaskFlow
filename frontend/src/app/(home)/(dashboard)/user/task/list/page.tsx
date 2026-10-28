@@ -1,5 +1,7 @@
 "use client";
 
+import { API_BASE, WS_BASE } from "@/app/config/api";
+
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { Client } from "@stomp/stompjs";
@@ -74,7 +76,7 @@ export default function UserTaskListPage() {
         formData.append("note", submitNote.trim());
       }
 
-      const res = await fetch("http://localhost:8080/api/upload/submit", {
+      const res = await fetch(`${API_BASE}/api/upload/submit`, {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -130,7 +132,7 @@ export default function UserTaskListPage() {
 
     // 3. Kết nối STOMP WebSocket để nhận thông báo tức thì ngay trong trang
     const stompClient = new Client({
-      brokerURL: "ws://localhost:8080/ws",
+      brokerURL: WS_BASE,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

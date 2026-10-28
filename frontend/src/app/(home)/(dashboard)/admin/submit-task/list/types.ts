@@ -4,7 +4,8 @@
  * hằng số cấu hình trạng thái, và hàm tiện ích cho trang /admin/submit-task/list.
  */
 
-export const API_BASE = "http://localhost:8080";
+import { API_BASE } from "@/app/config/api";
+export { API_BASE };
 
 export type SubmissionStatus = "submitted" | "approved" | "resubmit_requested";
 
