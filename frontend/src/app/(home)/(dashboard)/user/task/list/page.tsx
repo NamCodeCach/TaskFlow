@@ -16,6 +16,10 @@ import {
   LuUpload,
   LuInbox,
   LuUser,
+  LuX,
+  LuFileText,
+  LuRadio,
+  LuPaperclip,
 } from "react-icons/lu";
 import { toast, Toaster } from "sonner";
 import { taskService, TaskItem } from "@/src/app/services/taskService";
@@ -27,6 +31,12 @@ export default function UserTaskListPage() {
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "deadline">("newest");
+
+  // Modal nộp bài
+  const [selectedTaskForSubmit, setSelectedTaskForSubmit] = useState<TaskItem | null>(null);
+  const [submitFile, setSubmitFile] = useState<File | null>(null);
+  const [submitNote, setSubmitNote] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // 1. Lấy thông tin thành viên đang đăng nhập từ localStorage hoặc Cookie
   useEffect(() => {
@@ -40,6 +50,57 @@ export default function UserTaskListPage() {
       console.error("Lỗi đọc thông tin người dùng:", e);
     }
   }, []);
+
+  // Xử lý nộp bài cho nhiệm vụ
+  const handleSubmitTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTaskForSubmit) return;
+    if (!submitFile) {
+      toast.error("Vui lòng chọn tệp tin đính kèm để nộp!");
+      return;
+    }
+    if (!currentUser?.userId) {
+      toast.error("Không tìm thấy thông tin thành viên đang đăng nhập!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", submitFile);
+      formData.append("taskId", String(selectedTaskForSubmit.id));
+      formData.append("userId", String(currentUser.userId));
+      if (submitNote.trim()) {
+        formData.append("note", submitNote.trim());
+      }
+
+      const res = await fetch("http://localhost:8080/api/upload/submit", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.code === "success") {
+        toast.success(`Đã nộp bài cho nhiệm vụ [${selectedTaskForSubmit.taskCode}] thành công!`, {
+          icon: <LuCheck size={18} className="text-emerald-600" />,
+        });
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === selectedTaskForSubmit.id ? { ...t, status: "SUBMITTED" } : t
+          )
+        );
+        setSelectedTaskForSubmit(null);
+        setSubmitFile(null);
+        setSubmitNote("");
+      } else {
+        toast.error(data.message || "Không thể nộp bài, vui lòng thử lại!");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi kết nối khi gửi bài nộp!");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // 2. Tải danh sách nhiệm vụ được giao cho thành viên này
   const fetchMyTasks = async (userId: number) => {
@@ -137,6 +198,62 @@ export default function UserTaskListPage() {
             }
           } catch (e) {
             console.error("[WS TASK DELETE ERROR]", e);
+          }
+        });
+
+        // Lắng nghe Admin duyệt hoàn thành hoặc yêu cầu nộp lại bài làm Real-time
+        stompClient.subscribe("/topic/submissions/reviewed", (message) => {
+          try {
+            const reviewData = JSON.parse(message.body);
+            if (!reviewData) return;
+
+            const isForMe =
+              (reviewData.submittedById && reviewData.submittedById === currentUser.userId) ||
+              (reviewData.submittedByEmail &&
+                currentUser.email &&
+                reviewData.submittedByEmail.toLowerCase() === currentUser.email.toLowerCase());
+
+            if (isForMe) {
+              if (reviewData.status === "approved") {
+                toast.success(
+                  `Nhiệm vụ [${reviewData.taskCode}] đã được Quản trị viên duyệt hoàn thành!`,
+                  {
+                    description: reviewData.taskTitle,
+                    icon: <LuCheck size={20} className="text-emerald-600 shrink-0" />,
+                    duration: 8000,
+                  }
+                );
+                // Cập nhật card trạng thái nhiệm vụ tức thì
+                setTasks((prev) =>
+                  prev.map((t) =>
+                    t.id === reviewData.taskId || t.taskCode === reviewData.taskCode
+                      ? { ...t, status: "COMPLETED" }
+                      : t
+                  )
+                );
+              } else if (reviewData.status === "resubmit_requested") {
+                toast.error(
+                  `Quản trị viên yêu cầu nộp lại: [${reviewData.taskCode}] ${reviewData.taskTitle}`,
+                  {
+                    description: reviewData.adminFeedback
+                      ? `Lý do: ${reviewData.adminFeedback}`
+                      : "Vui lòng hoàn thiện và nộp lại bài làm.",
+                    icon: <LuTriangleAlert size={20} className="text-rose-600 shrink-0" />,
+                    duration: 10000,
+                  }
+                );
+                // Cập nhật card trạng thái nhiệm vụ tức thì
+                setTasks((prev) =>
+                  prev.map((t) =>
+                    t.id === reviewData.taskId || t.taskCode === reviewData.taskCode
+                      ? { ...t, status: "TODO" }
+                      : t
+                  )
+                );
+              }
+            }
+          } catch (e) {
+            console.error("[WS SUBMISSION REVIEWED ERROR]", e);
           }
         });
       },
@@ -448,13 +565,18 @@ export default function UserTaskListPage() {
                         <span className="text-[11px] text-slate-500">Quản trị viên giao</span>
                       </div>
 
-                      <Link
-                        href={`/user/task/submitted?taskId=${task.id}`}
-                        className="flex items-center gap-1.5 rounded-xl bg-main px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-main/90 transition"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedTaskForSubmit(task);
+                          setSubmitFile(null);
+                          setSubmitNote("");
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl bg-main px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-main/90 transition cursor-pointer"
                       >
                         <LuUpload size={13} />
-                        <span>{task.status === "SUBMITTED" ? "Xem bài nộp" : "Nộp bài"}</span>
-                      </Link>
+                        <span>{task.status === "SUBMITTED" ? "Nộp lại / Cập nhật" : "Nộp bài"}</span>
+                      </button>
                     </div>
                   </article>
                 );
@@ -463,6 +585,117 @@ export default function UserTaskListPage() {
           )}
         </div>
       </div>
+
+      {/* Modal nộp bài trực tiếp */}
+      {selectedTaskForSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150">
+            {/* Header Modal */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-main">
+                  <LuUpload size={18} />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-text">
+                    Nộp bài làm cho nhiệm vụ
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    <span className="font-semibold text-main">[{selectedTaskForSubmit.taskCode}]</span> {selectedTaskForSubmit.title}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedTaskForSubmit(null)}
+                className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer"
+              >
+                <LuX size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitTask} className="mt-5 space-y-4">
+              {/* Chọn tệp */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Tệp tin đính kèm bài làm <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-5 text-center hover:border-main transition-colors">
+                  <input
+                    type="file"
+                    required
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setSubmitFile(e.target.files[0]);
+                      }
+                    }}
+                    className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
+                  />
+                  {submitFile ? (
+                    <div className="flex items-center justify-center gap-2 text-xs font-semibold text-main">
+                      <LuFileText size={18} />
+                      <span className="truncate max-w-[280px]">{submitFile.name}</span>
+                      <span className="text-slate-400 font-normal">
+                        ({(submitFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1.5 text-slate-400">
+                      <LuUpload size={22} className="text-main" />
+                      <p className="text-xs font-medium text-slate-600">
+                        Nhấp hoặc kéo thả tệp vào đây để tải lên
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Hỗ trợ ZIP, RAR, PDF, DOCX, XLSX, PNG, v.v.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Ghi chú */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Ghi chú gửi tới Quản trị viên (tùy chọn)
+                </label>
+                <textarea
+                  value={submitNote}
+                  onChange={(e) => setSubmitNote(e.target.value)}
+                  placeholder="Mô tả nội dung công việc đã làm, link tài liệu hoặc ghi chú kèm theo..."
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs text-text outline-none placeholder:text-slate-400 focus:border-main focus:ring-1 focus:ring-main"
+                />
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTaskForSubmit(null)}
+                  disabled={isSubmitting}
+                  className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !submitFile}
+                  className="flex items-center gap-1.5 rounded-xl bg-main px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-main/90 transition cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <LuLoader className="animate-spin text-white text-xs" />
+                  ) : (
+                    <LuCheck size={14} />
+                  )}
+                  {isSubmitting ? "Đang gửi..." : "Xác nhận nộp bài"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
