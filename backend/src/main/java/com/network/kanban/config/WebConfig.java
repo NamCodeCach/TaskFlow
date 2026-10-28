@@ -17,9 +17,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                // Cho phép frontend Next.js
-                .allowedOrigins("http://localhost:3000")
+        registry.addMapping("/**")
+                // Cho phép localhost và tên miền Vercel production
+                .allowedOriginPatterns("http://localhost:3000", "https://*.vercel.app", "*")
                 // Tất cả methods cần thiết
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 // Tất cả headers

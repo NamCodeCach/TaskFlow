@@ -53,7 +53,7 @@ public class User {
      * Ảnh đại diện – lưu dạng base64 string.
      * Dùng columnDefinition = "NVARCHAR(MAX)" cho SQL Server.
      */
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String avatar;
 
     /** Ngày cuối đổi ảnh đại diện (định dạng yyyy-MM-dd) */

@@ -31,11 +31,11 @@ public class Submission {
     private User submittedBy;
 
     /** Ghi chú kèm theo khi nộp của thành viên */
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    // Thay: @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String note;
 
-    /** Nhận xét / Lý do yêu cầu nộp lại từ Admin */
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String adminFeedback;
 
     /**

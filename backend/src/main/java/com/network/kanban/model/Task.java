@@ -32,7 +32,7 @@ public class Task {
     private String title;
 
     /** Mô tả chi tiết yêu cầu công việc */
-    @Column(columnDefinition = "NVARCHAR(MAX)")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     /** Danh mục, ví dụ: "Thiết kế", "Báo cáo", "Phát triển" */
