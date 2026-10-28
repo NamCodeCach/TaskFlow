@@ -14,9 +14,11 @@ import {
   LuTable,
   LuLogOut,
   LuShieldAlert,
+  LuX,
 } from "react-icons/lu";
 
 import { deleteCookie } from "@/app/utils/cookie";
+import { useSidebar } from "@/app/context/SidebarContext";
 
 type SiderItem = {
   Icon: IconType;
@@ -30,7 +32,6 @@ export const siderItemsAdmin: SiderItem[] = [
   { Icon: LuListChecks, title: "Tất cả Task", pathname: "/admin/task/list" },
   { Icon: LuFolderCheck, title: "Bài nộp", pathname: "/admin/submit-task/list" },
   { Icon: LuUsers, title: "Thành viên", pathname: "/admin/member/list" },
-  { Icon: LuTable, title: "Xuất Excel", pathname: "/admin/export/exel" },
 ];
 
 // Menu dành riêng cho User (Thành viên)
@@ -41,9 +42,15 @@ export const siderItemsUser: SiderItem[] = [
 export const Sider = () => {
   const currentPath = usePathname();
   const router = useRouter();
+  const { isOpen, closeSidebar } = useSidebar();
 
   const [role, setRole] = useState<"user" | "admin">("user");
   const [currentUserRole, setCurrentUserRole] = useState<string>("user");
+
+  // Tự động đóng sider trên mobile khi chuyển route
+  useEffect(() => {
+    closeSidebar();
+  }, [currentPath]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -107,19 +114,44 @@ export const Sider = () => {
 
   return (
     <>
+      {/* Lớp nền mờ overlay trên mobile khi mở Sider */}
+      {isOpen && (
+        <div
+          onClick={closeSidebar}
+          className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-xs transition-opacity lg:hidden"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sider bar */}
-      <aside className="fixed left-[0px] top-[0px] z-[50] hidden h-screen w-[254px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF] lg:flex">
-        {/* Logo */}
-        <div className="flex items-center gap-[12px] p-[24px]">
-          <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[12px] bg-[#4F46E5] text-[18px] text-[#FFFFFF]">
-            <FaListCheck />
+      <aside
+        className={`fixed left-[0px] top-[0px] z-[70] h-screen w-[260px] flex-col overflow-y-auto border-r-[1px] border-[#E2E8F0] bg-[#FFFFFF] transition-transform duration-300 ease-in-out lg:z-[50] lg:flex lg:w-[254px] lg:translate-x-0 ${
+          isOpen ? "flex translate-x-0 shadow-2xl" : "hidden -translate-x-full lg:flex"
+        }`}
+      >
+        {/* Logo & Nút đóng trên mobile */}
+        <div className="flex items-center justify-between p-[20px] lg:p-[24px]">
+          <div className="flex items-center gap-[12px]">
+            <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[12px] bg-[#4F46E5] text-[18px] text-[#FFFFFF]">
+              <FaListCheck />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[18px] font-bold text-[#182230]">TaskFlow</span>
+              <span className="text-[11px] font-semibold text-slate-400">
+                {role === "admin" ? "Không gian Admin" : "Không gian Thành viên"}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[18px] font-bold text-[#182230]">TaskFlow</span>
-            <span className="text-[11px] font-semibold text-slate-400">
-              {role === "admin" ? "Không gian Admin" : "Không gian Thành viên"}
-            </span>
-          </div>
+
+          {/* Nút đóng sidebar trên mobile */}
+          <button
+            type="button"
+            onClick={closeSidebar}
+            aria-label="Đóng menu điều hướng"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition lg:hidden cursor-pointer"
+          >
+            <LuX size={20} />
+          </button>
         </div>
 
         {/* Menu */}
@@ -136,6 +168,7 @@ export const Sider = () => {
                 <li key={pathname}>
                   <Link
                     href={pathname}
+                    onClick={closeSidebar}
                     className={`flex items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] transition ${
                       isActive
                         ? "bg-[#EEF2FF] font-semibold text-[#4F46E5]"
@@ -155,7 +188,10 @@ export const Sider = () => {
         <div className="border-t-[1px] border-[#E2E8F0] p-[16px]">
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={() => {
+              closeSidebar();
+              handleLogout();
+            }}
             className="flex w-full items-center gap-[12px] rounded-[12px] px-[16px] py-[12px] text-[14px] font-medium text-[#EF4444] transition hover:bg-[#FEF2F2] cursor-pointer"
           >
             <LuLogOut className="text-[18px]" />
