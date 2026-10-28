@@ -1,8 +1,9 @@
-# Stage 1: Build file JAR từ mã nguồn
-FROM eclipse-temurin:21-jdk AS build
+# Stage 1: Build file JAR bằng Maven chính thức đã tích hợp sẵn JDK 21
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY . .
-RUN chmod +x mvnw && ./mvnw clean package -DskipTests
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
 # Stage 2: Môi trường chạy siêu nhẹ với JRE 21
 FROM eclipse-temurin:21-jre-alpine
