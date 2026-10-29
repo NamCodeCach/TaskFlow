@@ -3,7 +3,10 @@ package com.network.kanban.service;
 import com.network.kanban.dto.request.CreateMemberRequest;
 import com.network.kanban.dto.request.UpdateMemberRequest;
 import com.network.kanban.dto.response.LoginResponse;
+import com.network.kanban.model.Submission;
 import com.network.kanban.model.User;
+import com.network.kanban.repository.SubmissionRepository;
+import com.network.kanban.repository.TaskRepository;
 import com.network.kanban.repository.UserRepository;
 import com.network.kanban.security.EncryptionUtil;
 import com.network.kanban.security.JwtUtil;
@@ -12,7 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +27,8 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
+    private final SubmissionRepository submissionRepository;
     private final JwtUtil jwtUtil;
     private final EncryptionUtil encryptionUtil;
     private final EmailService emailService;
@@ -197,7 +204,6 @@ public class UserService {
         // Xóa mã OTP sau khi sử dụng thành công
         user.setResetOtp(null);
         user.setResetOtpExpiry(null);
-
         userRepository.save(user);
     }
 
@@ -304,16 +310,48 @@ public class UserService {
 
     /**
      * Xóa thành viên khỏi hệ thống:
-     * - Xóa trong CSDL
+     * - Dọn dẹp các ràng buộc khóa ngoại (Foreign Key Constraints) trước khi xóa:
+     *   1. Gỡ thành viên khỏi bảng phân công nhiệm vụ (task_assignees)
+     *   2. Xóa các bài nộp do thành viên này nộp (kèm xóa file vật lý trên đĩa)
+     *   3. Đặt null cho người duyệt bài (reviewed_by_id) nếu user là admin đã từng duyệt
+     *   4. Đặt null cho người tạo task (created_by_id) nếu user từng tạo task
+     *   5. Xóa tài khoản thành viên khỏi bảng users
      * - Phát sự kiện Real-time qua WebSocket tới kênh /topic/members/deleted
      */
+    @Transactional
     public void deleteMember(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thành viên với ID: " + id));
 
+        // 1. Gỡ user khỏi các task được phân công (task_assignees)
+        taskRepository.removeUserFromTaskAssignees(id);
+
+        // 2. Xóa các bài nộp của user này (xóa cả file đĩa vật lý nếu có)
+        List<Submission> submissions = submissionRepository.findAllBySubmittedById(id);
+        for (Submission sub : submissions) {
+            if (sub.getFilePath() != null && !sub.getFilePath().isBlank()) {
+                try {
+                    File file = new File(sub.getFilePath());
+                    if (file.exists()) {
+                        file.delete();
+                    }
+                } catch (Exception ex) {
+                    System.err.println("[FILE DELETE ERROR] Không thể xóa file: " + sub.getFilePath());
+                }
+            }
+        }
+        submissionRepository.deleteAll(submissions);
+
+        // 3. Clear reviewedBy nếu user là admin từng duyệt bài
+        submissionRepository.clearReviewedByForUser(id);
+
+        // 4. Clear createdBy nếu user từng tạo task
+        taskRepository.clearCreatedByForUser(id);
+
+        // 5. Xóa user trong database
         userRepository.delete(user);
 
-        // Phát Socket thông báo xóa Real-time
+        // 6. Phát Socket thông báo xóa Real-time
         try {
             messagingTemplate.convertAndSend("/topic/members/deleted", id);
             System.out.println("[WEBSOCKET] Đã broadcast xóa thành viên ID: " + id);
