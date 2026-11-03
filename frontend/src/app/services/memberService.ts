@@ -5,6 +5,7 @@ export interface Member {
   phone?: string | null;
   role: string;
   avatar?: string | null;
+  dob?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -21,6 +22,8 @@ export interface UpdateMemberPayload {
   fullName: string;
   phone?: string;
   role?: string;
+  dob?: string;
+  avatar?: string;
 }
 
 export interface ApiResponse<T = any> {
@@ -75,7 +78,7 @@ export const memberService = {
   },
 
   /**
-   * Chỉnh sửa thông tin thành viên (Họ và tên, SĐT, Vai trò)
+   * Chỉnh sửa thông tin thành viên (Họ và tên, SĐT, Ngày sinh, Avatar, Vai trò)
    */
   async update(id: number, payload: UpdateMemberPayload): Promise<ApiResponse<Member>> {
     try {

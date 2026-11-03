@@ -39,10 +39,7 @@ export const Header = () => {
   // Đóng dropdown tài khoản khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
       }
     };
@@ -65,19 +62,22 @@ export const Header = () => {
 
           // Tự động đồng bộ thông tin mới nhất từ CSDL để sửa lỗi font cũ trong localStorage
           if (parsed.email) {
-            authService.getAccount(parsed.email).then((res: any) => {
-              if (res.code === "success" && res.data) {
-                const updated: CurrentUser = {
-                  userId: res.data.id || parsed.userId,
-                  fullName: res.data.fullName || parsed.fullName,
-                  email: res.data.email || parsed.email,
-                  role: res.data.role || parsed.role,
-                  avatar: res.data.avatar || parsed.avatar,
-                };
-                setUser(updated);
-                localStorage.setItem("taskflow_current_user", JSON.stringify(updated));
-              }
-            }).catch(() => {});
+            authService
+              .getAccount(parsed.email)
+              .then((res: any) => {
+                if (res.code === "success" && res.data) {
+                  const updated: CurrentUser = {
+                    userId: res.data.id || parsed.userId,
+                    fullName: res.data.fullName || parsed.fullName,
+                    email: res.data.email || parsed.email,
+                    role: res.data.role || parsed.role,
+                    avatar: res.data.avatar || parsed.avatar,
+                  };
+                  setUser(updated);
+                  localStorage.setItem("taskflow_current_user", JSON.stringify(updated));
+                }
+              })
+              .catch(() => {});
           }
         } catch (e) {
           console.error("Lỗi parse thông tin user:", e);
@@ -124,27 +124,6 @@ export const Header = () => {
 
         {/* Phải: tìm kiếm + chuông + avatar */}
         <div className="flex items-center gap-[16px]">
-          <div className="relative hidden md:block">
-            <LuSearch className="absolute left-[14px] top-[50%] -translate-y-[50%] text-[16px] text-[#64748B]" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm trong nhóm..."
-              className="h-[40px] w-[260px] rounded-[12px] bg-[#F5F6FA] pl-[40px] pr-[14px] text-[14px] text-[#182230] outline-none placeholder:text-[#94A3B8] focus:ring-[2px] focus:ring-[#4F46E533] xl:w-[300px]"
-            />
-          </div>
-
-          {/* Chuông thông báo */}
-          <button
-            type="button"
-            className="relative flex h-[40px] w-[40px] items-center justify-center rounded-[50%] text-[20px] text-[#475569] transition hover:bg-[#F5F6FA] cursor-pointer"
-          >
-            <LuBell />
-            <span className="absolute right-[10px] top-[9px] h-[8px] w-[8px] rounded-[50%] bg-[#4F46E5] ring-[2px] ring-[#FFFFFF]" />
-          </button>
-
-          {/* Đường kẻ dọc */}
-          <div className="hidden h-[28px] w-[1px] bg-[#E2E8F0] sm:block" />
-
           {/* Vùng Avatar + Popup tài khoản (click để bật/tắt) */}
           <div ref={profileMenuRef} className="relative">
             <button
