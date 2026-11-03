@@ -12,4 +12,8 @@ public class UpdateMemberRequest {
     private String phone;
 
     private String role;
+
+    private String dob;
+
+    private String avatar;
 }

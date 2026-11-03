@@ -290,6 +290,17 @@ public class UserService {
         // Cập nhật số điện thoại
         user.setPhone(req.getPhone() != null && !req.getPhone().isBlank() ? req.getPhone().trim() : null);
 
+        // Cập nhật ngày sinh
+        if (req.getDob() != null) {
+            user.setDob(req.getDob().trim());
+        }
+
+        // Cập nhật ảnh đại diện (avatar)
+        if (req.getAvatar() != null && !req.getAvatar().isBlank()) {
+            user.setAvatar(req.getAvatar());
+            user.setLastAvatarChangedDate(java.time.LocalDate.now().toString());
+        }
+
         // Cập nhật vai trò nếu có
         if (req.getRole() != null && !req.getRole().isBlank()) {
             user.setRole(req.getRole().trim().toLowerCase());
